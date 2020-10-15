@@ -1,0 +1,17 @@
+[package]
+name = "ffv1"
+version = "0.1.0"
+authors = ["Luni-4 <luni-4@hotmail.it>"]
+edition = "2018"
+
+[dependencies]
+crc = "1.8"
+thiserror = "1.0"
+
+[dev-dependencies]
+av-codec = "0.2.0"
+av-data = "0.2.1"
+av-format = "0.2.1"
+byteorder = "1.3.4"
+clap = "2.33.1"
+matroska = { version = "0.1.0", git = "https://github.com/rust-av/matroska" }

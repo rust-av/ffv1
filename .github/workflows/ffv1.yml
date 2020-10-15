@@ -1,0 +1,117 @@
+name: ffv1
+
+on: [push, pull_request]
+
+jobs:
+  rustfmt-clippy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: clippy, rustfmt
+
+    - name: Run rustfmt
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: -- --check
+
+    - name: Run clippy
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: -- -D warnings --verbose
+
+  compare-rust-go-ffmpeg:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install FFmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install ffmpeg
+
+    - name: Install Rust stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: "1.14.0"
+
+    - name: Build example
+      run: |
+        cargo build --release --examples
+
+    - name: Run example
+      run: |
+        cargo run --release --example ffv1_decode -- -i data/ffv1_v3.mkv \
+                                                     -o data/ffv1-rust.raw
+
+    - name: Build ffv1-go
+      run: |
+        git clone --depth 1 https://github.com/dwbuiten/go-ffv1.git
+        mv data/main.go go-ffv1
+        cd go-ffv1
+        go build -o ffv1-go .
+
+    - name: Run ffv1-go
+      run: |
+        mv go-ffv1/ffv1-go .
+        ./ffv1-go
+
+    - name: Run ffmpeg
+      working-directory: data
+      run: |
+        ffmpeg -i ffv1_v3.mkv -f rawvideo ffv1-ffmpeg.raw
+
+    - name: Compare Rust and Go raw files
+      working-directory: data
+      run: |
+        cmp -l ffv1-rust.raw ffv1-go.raw
+
+    - name: Compare Rust and FFmpeg raw files
+      working-directory: data
+      run: |
+        cmp -l ffv1-rust.raw ffv1-ffmpeg.raw
+
+  build:
+
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Build
+      run: |
+        cargo build
+
+    - name: Build example
+      run: |
+        cargo build --examples
