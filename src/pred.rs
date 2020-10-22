@@ -89,7 +89,7 @@ macro_rules! deriveBorders {
 
             // tr
             if y > 0 {
-                tr = plane[pos - stride + min(1, width - 1 - x) as usize]
+                tr = plane[pos - stride + (width - 1 - x).min(1) as usize]
                     as isize;
             }
 
@@ -122,25 +122,9 @@ pub fn get_context(
         + quant_tables[4][(T - t) as usize & 255] as i32
 }
 
-fn min(a: isize, b: isize) -> isize {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
-
-fn max(a: isize, b: isize) -> isize {
-    if a > b {
-        a
-    } else {
-        b
-    }
-}
-
 /// Calculate the median value of 3 numbers
 ///
 /// See: 2.2.5. Mathematical Functions
 pub fn get_median(a: isize, b: isize, c: isize) -> isize {
-    a + b + c - min(a, min(b, c)) - max(a, max(b, c))
+    a + b + c - a.min(b.min(c)) - a.max(b.max(c))
 }
