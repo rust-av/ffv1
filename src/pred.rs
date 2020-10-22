@@ -1,106 +1,97 @@
 #![allow(non_snake_case)]
 
-macro_rules! deriveBorders {
-    ($func_name: ident, $type: ty) => {
-        /// Calculates all the neighbouring pixel values given:
-        ///
-        /// +---+---+---+---+
-        /// |   |   | T |   |
-        /// +---+---+---+---+
-        /// |   |tl | t |tr |
-        /// +---+---+---+---+
-        /// | L | l | X |   |
-        /// +---+---+---+---+
-        ///
-        /// where 'X' is the pixel at our current position, and borders are:
-        ///
-        /// +---+---+---+---+---+---+---+---+
-        /// | 0 | 0 |   | 0 | 0 | 0 |   | 0 |
-        /// +---+---+---+---+---+---+---+---+
-        /// | 0 | 0 |   | 0 | 0 | 0 |   | 0 |
-        /// +---+---+---+---+---+---+---+---+
-        /// |   |   |   |   |   |   |   |   |
-        /// +---+---+---+---+---+---+---+---+
-        /// | 0 | 0 |   | a | b | c |   | c |
-        /// +---+---+---+---+---+---+---+---+
-        /// | 0 | a |   | d | e | f |   | f |
-        /// +---+---+---+---+---+---+---+---+
-        /// | 0 | d |   | g | h | i |   | i |
-        /// +---+---+---+---+---+---+---+---+
-        ///
-        /// where 'a' through 'i' are pixel values in a plane.
-        ///
-        /// See: * 3.1. Border
-        ///      * 3.2. Samples
-        pub fn $func_name(
-            plane: &[$type],
-            x: isize,
-            y: isize,
-            width: isize,
-            _height: isize,
-            stride: isize,
-        ) -> (isize, isize, isize, isize, isize, isize) {
-            let mut T: isize = 0;
-            let mut L: isize = 0;
-            let mut t: isize = 0;
-            let mut l: isize = 0;
-            let mut tr: isize = 0;
-            let mut tl: isize = 0;
+/// Calculates all the neighbouring pixel values given:
+///
+/// +---+---+---+---+
+/// |   |   | T |   |
+/// +---+---+---+---+
+/// |   |tl | t |tr |
+/// +---+---+---+---+
+/// | L | l | X |   |
+/// +---+---+---+---+
+///
+/// where 'X' is the pixel at our current position, and borders are:
+///
+/// +---+---+---+---+---+---+---+---+
+/// | 0 | 0 |   | 0 | 0 | 0 |   | 0 |
+/// +---+---+---+---+---+---+---+---+
+/// | 0 | 0 |   | 0 | 0 | 0 |   | 0 |
+/// +---+---+---+---+---+---+---+---+
+/// |   |   |   |   |   |   |   |   |
+/// +---+---+---+---+---+---+---+---+
+/// | 0 | 0 |   | a | b | c |   | c |
+/// +---+---+---+---+---+---+---+---+
+/// | 0 | a |   | d | e | f |   | f |
+/// +---+---+---+---+---+---+---+---+
+/// | 0 | d |   | g | h | i |   | i |
+/// +---+---+---+---+---+---+---+---+
+///
+/// where 'a' through 'i' are pixel values in a plane.
+///
+/// See: * 3.1. Border
+///      * 3.2. Samples
+pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
+    plane: &[T],
+    x: isize,
+    y: isize,
+    width: isize,
+    _height: isize,
+    stride: isize,
+) -> (isize, isize, isize, isize, isize, isize) {
+    let mut T: isize = 0;
+    let mut L: isize = 0;
+    let mut t: isize = 0;
+    let mut l: isize = 0;
+    let mut tr: isize = 0;
+    let mut tl: isize = 0;
 
-            let stride = stride as usize;
-            let pos = y as usize * stride + x as usize;
+    let stride = stride as usize;
+    let pos = y as usize * stride + x as usize;
 
-            // This is really slow and stupid but matches the spec exactly.
-            // Each of the neighbouring values has been left entirely separate,
-            // and none skipped, even if they could be.
-            //
-            // Please never implement an actual decoder this way.
+    // This is really slow and stupid but matches the spec exactly.
+    // Each of the neighbouring values has been left entirely separate,
+    // and none skipped, even if they could be.
+    //
+    // Please never implement an actual decoder this way.
 
-            // T
-            if y > 1 {
-                T = plane[pos - (2 * stride)] as isize;
-            }
+    // T
+    if y > 1 {
+        T = plane[pos - (2 * stride)].as_();
+    }
 
-            // L
-            if y > 0 && x == 1 {
-                L = plane[pos - stride - 1] as isize;
-            } else if x > 1 {
-                L = plane[pos - 2] as isize;
-            }
+    // L
+    if y > 0 && x == 1 {
+        L = plane[pos - stride - 1].as_();
+    } else if x > 1 {
+        L = plane[pos - 2].as_();
+    }
 
-            // t
-            if y > 0 {
-                t = plane[pos - stride] as isize;
-            }
+    // t
+    if y > 0 {
+        t = plane[pos - stride].as_();
+    }
 
-            // l
-            if x > 0 {
-                l = plane[pos - 1] as isize;
-            } else if y > 0 {
-                l = plane[pos - stride] as isize;
-            }
+    // l
+    if x > 0 {
+        l = plane[pos - 1].as_();
+    } else if y > 0 {
+        l = plane[pos - stride].as_();
+    }
 
-            // tl
-            if y > 1 && x == 0 {
-                tl = plane[pos - (2 * stride)] as isize;
-            } else if y > 0 && x > 0 {
-                tl = plane[pos - stride - 1] as isize;
-            }
+    // tl
+    if y > 1 && x == 0 {
+        tl = plane[pos - (2 * stride)].as_();
+    } else if y > 0 && x > 0 {
+        tl = plane[pos - stride - 1].as_();
+    }
 
-            // tr
-            if y > 0 {
-                tr = plane[pos - stride + (width - 1 - x).min(1) as usize]
-                    as isize;
-            }
+    // tr
+    if y > 0 {
+        tr = plane[pos - stride + (width - 1 - x).min(1) as usize].as_();
+    }
 
-            (T, L, t, l, tr, tl)
-        }
-    };
+    (T, L, t, l, tr, tl)
 }
-
-deriveBorders!(derive_borders, u8);
-deriveBorders!(derive_borders16, u16);
-deriveBorders!(derive_borders32, u32);
 
 /// Given the neighbouring pixel values, calculate the context.
 ///

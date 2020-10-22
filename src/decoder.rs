@@ -3,10 +3,7 @@ use crate::crc32mpeg2::crc32_mpeg2;
 use crate::error::{Error, Result};
 use crate::golomb::{Coder, State};
 use crate::jpeg2000rct::{rct16, rct8, rct_mid};
-use crate::pred::{
-    derive_borders, derive_borders16, derive_borders32, get_context,
-    get_median,
-};
+use crate::pred::{derive_borders, get_context, get_median};
 use crate::range::RangeCoder;
 use crate::rangecoder::tables::DEFAULT_STATE_TRANSITION;
 use crate::record::ConfigRecord;
@@ -482,7 +479,7 @@ impl Decoder {
             } else if self.record.bits_per_raw_sample == 16
                 && self.record.colorspace_type == 1
             {
-                derive_borders32(
+                derive_borders(
                     &frame.buf32[plane as usize][offset as usize..],
                     x as isize,
                     yy,
@@ -491,7 +488,7 @@ impl Decoder {
                     stride,
                 )
             } else {
-                derive_borders16(
+                derive_borders(
                     &frame.buf16[plane as usize][offset as usize..],
                     x as isize,
                     yy,
