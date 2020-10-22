@@ -62,7 +62,8 @@ fn decode_single_frame(
 
 fn main() -> std::io::Result<()> {
     // Open the matroska file
-    let reader = File::open("../../data/ffv1_v3.mkv").unwrap();
+    let f = std::env::args().nth(1).expect("File path expected");
+    let reader = File::open(f).unwrap();
 
     // Create a buffer of size 4096MB to contain matroska data
     let ar = AccReader::with_capacity(4 * 1024, reader);

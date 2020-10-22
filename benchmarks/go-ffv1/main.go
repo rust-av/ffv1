@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("../../data/ffv1_v3.mkv")
+	f, err := os.Open(os.Args[1])
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -57,5 +57,5 @@ func main() {
 			log.Fatalln(err)
 		}
 	}
-	fmt.Printf("EOF reached.")
+	fmt.Printf("EOF reached.\n")
 }

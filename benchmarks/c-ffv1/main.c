@@ -95,7 +95,12 @@ int main (int argc, char **argv)
 {
     int ret = 0;
 
-    src_filename = "../../data/ffv1_v3.mkv";
+    if (argc < 1) {
+        fprintf(stderr, "File path expected\n");
+        return 1;
+    }
+
+    src_filename = argv[1];
 
     /* open input file, and allocate format context */
     if (avformat_open_input(&fmt_ctx, src_filename, NULL, NULL) < 0) {
@@ -143,7 +148,7 @@ int main (int argc, char **argv)
     /* flush the decoders */
     decode_packet(video_dec_ctx, NULL);
 
-    printf("EOF reached.");
+    printf("EOF reached.\n");
 
 end:
     avcodec_free_context(&video_dec_ctx);
