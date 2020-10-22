@@ -3,3 +3,4 @@ benchmarks/c-ffv1/c-ffv1
 benchmarks/rust-ffv1/target/
 benchmarks/go-ffv1/go-ffv1
 *.raw
+Cargo.lock
