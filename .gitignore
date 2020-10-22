@@ -5,3 +5,4 @@ benchmarks/go-ffv1/go-ffv1
 *.raw
 Cargo.lock
 benchmarks/builds/
+ffv1-bench.*
