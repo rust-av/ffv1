@@ -30,23 +30,23 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: -- -D warnings --verbose
 
-  cargo-publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run cargo publish for ffv1
-      continue-on-error: true
-      run: |
-        FFV1_TMP=$(mktemp /tmp/ffv1XXX.txt) || echo "::error::mktemp error"
-        echo "::set-env name=FFV1_TMP::$FFV1_TMP"
-        cargo publish --token ${{ secrets.CRATESIO_TOKEN }} 2> $FFV1_TMP
-    - name: Check if ffv1 is already published
-      run: |
-        empty=0
-        grep -q '[^[:space:]]' < $FFV1_TMP || empty=1
-        [ $empty -eq 0 ] && cat $FFV1_TMP
-        [ $empty -eq 1 ] || grep -q "is already uploaded" < $FFV1_TMP
+#  cargo-publish:
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+#    runs-on: ubuntu-latest
+#    steps:
+#    - uses: actions/checkout@v2
+#    - name: Run cargo publish for ffv1
+#      continue-on-error: true
+#      run: |
+#        FFV1_TMP=$(mktemp /tmp/ffv1XXX.txt) || echo "::error::mktemp error"
+#        echo "::set-env name=FFV1_TMP::$FFV1_TMP"
+#        cargo publish --token ${{ secrets.CRATESIO_TOKEN }} 2> $FFV1_TMP
+#    - name: Check if ffv1 is already published
+#      run: |
+#        empty=0
+#        grep -q '[^[:space:]]' < $FFV1_TMP || empty=1
+#        [ $empty -eq 0 ] && cat $FFV1_TMP
+#        [ $empty -eq 1 ] || grep -q "is already uploaded" < $FFV1_TMP
 
 
   compare-rust-go-ffmpeg:
