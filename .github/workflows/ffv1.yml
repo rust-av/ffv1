@@ -81,7 +81,7 @@ jobs:
 #        [ $empty -eq 1 ] || grep -q "is already uploaded" < $FFV1_TMP
 
 
-  compare-rust-go-ffmpeg:
+  compare-rust-ffmpeg:
 
     runs-on: ubuntu-latest
 
@@ -100,11 +100,6 @@ jobs:
         toolchain: stable
         override: true
 
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: "1.14.0"
-
     - name: Build example
       run: |
         cargo build --release --examples
@@ -113,28 +108,10 @@ jobs:
       run: |
         cargo run --release --example ffv1_decode -- -i data/ffv1_v3.mkv \
                                                      -o data/ffv1-rust.raw
-
-    - name: Build ffv1-go
-      run: |
-        git clone --depth 1 https://github.com/dwbuiten/go-ffv1.git
-        mv data/main.go go-ffv1
-        cd go-ffv1
-        go build -o ffv1-go .
-
-    - name: Run ffv1-go
-      run: |
-        mv go-ffv1/ffv1-go .
-        ./ffv1-go
-
     - name: Run ffmpeg
       working-directory: data
       run: |
         ffmpeg -i ffv1_v3.mkv -f rawvideo ffv1-ffmpeg.raw
-
-    - name: Compare Rust and Go raw files
-      working-directory: data
-      run: |
-        cmp -l ffv1-rust.raw ffv1-go.raw
 
     - name: Compare Rust and FFmpeg raw files
       working-directory: data
