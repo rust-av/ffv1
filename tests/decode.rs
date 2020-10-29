@@ -1,18 +1,9 @@
-// ffv1 crate
-extern crate ffv1;
-
-// rust-av crates
-extern crate av_data as data;
-extern crate av_format as format;
-
-// Matroska demuxer
-extern crate matroska;
-
 use std::fs::File;
+use std::io::Read;
 
-use data::params::MediaKind;
-use format::buffer::AccReader;
-use format::demuxer::{Context, Event};
+use av_data::params::MediaKind;
+use av_format::buffer::AccReader;
+use av_format::demuxer::{Context, Event};
 
 use matroska::demuxer::MkvDemuxer;
 
@@ -61,13 +52,10 @@ fn decode_single_frame(
     }
 }
 
-#[test]
-fn test_1() {
-    // Open the matroska file
-    let f = "data/ffv1_v3.mkv";
-    let reader = File::open(f).unwrap();
+fn decode(input: &str) -> ffv1::decoder::Frame {
+    let reader = File::open(input).unwrap();
 
-    // Create a buffer of size 4096MB to contain matroska data
+    // Create a buffer of size 4096KiB to contain matroska data
     let ar = AccReader::with_capacity(4 * 1024, reader);
 
     // Set the type of demuxer, in this case, a matroska demuxer
@@ -107,19 +95,69 @@ fn test_1() {
     )
     .unwrap();
 
-    // Iterate over the decoded frames
-    let frame = decode_single_frame(&mut demuxer, &mut ffv1_decoder).unwrap();
+    decode_single_frame(&mut demuxer, &mut ffv1_decoder).unwrap()
+}
 
-    use std::io::Read;
-    let r1 = File::open("data/ref_1.raw").unwrap().bytes();
+#[test]
+fn test_yuv420() {
+    let input = "data/ffv1_v3_yuv420p.mkv";
+    let reference = "data/ffv1_v3_yuv420p.ref";
+    let f = File::open(reference).unwrap();
+    let frame = decode(input);
 
     let yplane = frame.buf[0].iter();
     let uplane = frame.buf[1].iter();
     let vplane = frame.buf[2].iter();
 
-    let planes = yplane.chain(uplane).chain(vplane);
+    let pixels = yplane.chain(uplane).chain(vplane);
 
-    for (&p, r) in planes.zip(r1) {
-        assert_eq!(p, r.unwrap());
+    for (i, (&p, r)) in pixels.zip(f.bytes()).enumerate() {
+        assert_eq!(p, r.unwrap(), "pixel {}", i);
+    }
+}
+
+#[test]
+fn test_bgr0() {
+    let input = "data/ffv1_v3_bgr0.mkv";
+    let reference = "data/ffv1_v3_bgr0.ref";
+
+    let mut f = File::open(reference).unwrap();
+    let frame = decode(input);
+
+    let gplane = frame.buf[0].iter();
+    let bplane = frame.buf[1].iter();
+    let rplane = frame.buf[2].iter();
+
+    let pixels = gplane.zip(bplane).zip(rplane);
+
+    for (i, p) in pixels.enumerate() {
+        let mut reference_pixel = [0u8; 4];
+        f.read_exact(&mut reference_pixel).unwrap();
+
+        let [r_b, r_g, r_r, _] = reference_pixel;
+        let ((&p_g, &p_b), &p_r) = p;
+
+        assert_eq!((p_r, p_g, p_b), (r_r, r_g, r_b), "pixel {}", i);
+    }
+}
+
+#[test]
+fn test_gbrp16le() {
+    use byteorder::{LittleEndian, ReadBytesExt};
+    let input = "data/ffv1_v3_gbrp16le.mkv";
+    let reference = "data/ffv1_v3_gbrp16le.ref";
+
+    let mut f = File::open(reference).unwrap();
+    let frame = decode(input);
+
+    let gplane = frame.buf16[0].iter();
+    let bplane = frame.buf16[1].iter();
+    let rplane = frame.buf16[2].iter();
+
+    let pixels = gplane.chain(bplane).chain(rplane);
+
+    for (i, &p) in pixels.enumerate() {
+        let r = f.read_u16::<LittleEndian>().unwrap();
+        assert_eq!(p, r, "pixel {}", i);
     }
 }
