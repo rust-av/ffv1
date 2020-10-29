@@ -279,10 +279,11 @@ impl Decoder {
                 self.initial_states[i][j] =
                     vec![0; self.record.initial_state_delta[i][j].len()];
                 for k in 0..self.record.initial_state_delta[i][j].len() {
-                    let mut pred = 128 as i16;
-                    if j != 0 {
-                        pred = self.initial_states[i][j - 1][k] as i16;
-                    }
+                    let pred = if j != 0 {
+                        self.initial_states[i][j - 1][k] as i16
+                    } else {
+                        128 as i16
+                    };
                     self.initial_states[i][j][k] =
                         ((pred + self.record.initial_state_delta[i][j][k])
                             & 255) as u8;
