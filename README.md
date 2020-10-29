@@ -12,7 +12,7 @@ relative specifications.
 
 This project has been developed with the aim of testing parallelism.
 
-## Building
+## Building library
 
 Debug mode:
 
@@ -26,22 +26,16 @@ Release mode:
 cargo build --release
 ```
 
-## Building examples
+## Building decoder
 
 ```bash
-cargo build --release --examples
+cargo build --release --workspace
 ```
 
-## Run example
+## Run decoder
 
 ```bash
-cargo run --release --example EXAMPLE_NAME -- -i INPUT_FILEPATH -o OUTPUT_FILEPATH
-```
-
-For example, if you want to run the `ffv1_decode` example:
-
-```bash
-cargo run --release --example ffv1_decode -- -i input.mkv -o output.raw
+cargo run --release --package ffv1-decoder -- -i INPUT_FILEPATH -o OUTPUT_FILEPATH
 ```
 
 You can reproduce your raw file with `ffplay` from `FFmpeg` specifying
