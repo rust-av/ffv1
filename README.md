@@ -2,7 +2,7 @@
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Actions Status](https://github.com/Luni-4/ffv1/workflows/ffv1/badge.svg)](https://github.com/Luni-4/ffv1/actions)
-[![Coverage Status](https://coveralls.io/repos/github/rust-av/ffv1/badge.svg?branch=integration_tests)](https://coveralls.io/github/rust-av/ffv1?branch=integration_tests)
+[![Coverage Status](https://coveralls.io/repos/github/rust-av/ffv1/badge.svg?branch=master)](https://coveralls.io/github/rust-av/ffv1?branch=master)
 
 A pure-Rust FFV1 decoder based on this [Go](https://github.com/dwbuiten/go-ffv1)
 implementation. A great and personal thanks to
