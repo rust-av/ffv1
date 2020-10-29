@@ -457,10 +457,11 @@ impl Decoder {
         // 4.7.4. sample_difference
         for x in 0..width as usize {
             // 3.8. Coding of the Sample Difference
-            let mut shift = self.record.bits_per_raw_sample;
-            if self.record.colorspace_type == 1 {
-                shift = self.record.bits_per_raw_sample + 1;
-            }
+            let shift = if self.record.colorspace_type == 1 {
+                self.record.bits_per_raw_sample + 1
+            } else {
+                self.record.bits_per_raw_sample
+            };
 
             // Derive neighbours
             //
