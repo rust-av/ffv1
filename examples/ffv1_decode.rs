@@ -28,7 +28,7 @@ use matroska::demuxer::MkvDemuxer;
 
 use ffv1::decoder::{Decoder, Frame};
 
-use byteorder::{ByteOrder, LittleEndian};
+use byteorder::{LittleEndian, WriteBytesExt};
 use clap::{App, Arg};
 
 // ffv1 decoder parameters
@@ -45,9 +45,10 @@ fn write_u16_le<W: Write>(
     file: &mut BufWriter<W>,
     buf16: &[u16],
 ) -> std::io::Result<()> {
-    let mut bytes: Vec<u8> = Vec::new();
-    LittleEndian::write_u16_into(&buf16, &mut bytes);
-    file.write_all(&bytes)
+    for &v in buf16 {
+        file.write_u16::<LittleEndian>(v)?
+    }
+    Ok(())
 }
 
 // Decodes a single ffv1 frame
