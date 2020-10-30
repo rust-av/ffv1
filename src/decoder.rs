@@ -1,7 +1,7 @@
 use crate::constants::CONTEXT_SIZE;
 use crate::crc32mpeg2::crc32_mpeg2;
 use crate::error::{Error, Result};
-use crate::golomb::{Coder, State};
+use crate::golomb::Coder;
 use crate::jpeg2000rct::{rct16, rct8, rct_mid};
 use crate::pred::{derive_borders, get_context, get_median};
 use crate::range::RangeCoder;
@@ -772,38 +772,17 @@ impl Decoder {
 
     /// Resets the range coder and Golomb-Rice coder states.
     pub fn reset_slice_states(&mut self, slicenum: usize) {
+        let current_slice = &mut self.current_frame.slices[slicenum];
         // Range coder states
-        self.current_frame.slices[slicenum].state =
-            vec![Vec::new(); self.initial_states.len()];
-        for i in 0..self.initial_states.len() {
-            self.current_frame.slices[slicenum].state[i] =
-                vec![Vec::new(); self.initial_states[i].len()];
-            for j in 0..self.initial_states[i].len() {
-                self.current_frame.slices[slicenum].state[i][j] =
-                    vec![0; self.initial_states[i][j].len()];
-                self.current_frame.slices[slicenum].state[i][j]
-                    .copy_from_slice(&self.initial_states[i][j]);
-            }
-        }
+        current_slice.state = self.initial_states.clone();
 
         // Golomb-Rice Code states
         if self.record.coder_type == 0 {
-            self.current_frame.slices[slicenum].golomb_state =
-                vec![Vec::new(); self.record.quant_table_set_count as usize];
-            for i in 0..self.current_frame.slices[slicenum].golomb_state.len()
-            {
-                self.current_frame.slices[slicenum].golomb_state[i] = vec![
-                    Default::default();
-                    self.record.context_count[i]
-                        as usize
-                ];
-                for j in 0..self.current_frame.slices[slicenum].golomb_state[i]
-                    .len()
-                {
-                    self.current_frame.slices[slicenum].golomb_state[i][j] =
-                        State::new();
-                }
-            }
+            let count = self.record.quant_table_set_count as usize;
+            current_slice.golomb_state = self.record.context_count[..count]
+                .iter()
+                .map(|&len| vec![Default::default(); len as usize])
+                .collect();
         }
     }
 
