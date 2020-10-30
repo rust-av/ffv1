@@ -10,7 +10,7 @@ pub struct InternalFrame {
     pub slices: Vec<Slice>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Copy)]
 pub struct SliceInfo {
     pub(crate) pos: isize,
     pub(crate) size: u32,

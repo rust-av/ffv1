@@ -813,29 +813,22 @@ impl Decoder {
         slicenum: isize,
         frame: &mut Frame,
     ) -> Result<()> {
+        let slice_info = self.current_frame.slice_info[slicenum as usize];
         // Before we do anything, let's try and check the integrity
         //
         // See: * 4.8.2. error_status
         //      * 4.8.3. slice_crc_parity
         if self.record.ec == 1 {
-            if self.current_frame.slice_info[slicenum as usize].error_status
-                != 0
-            {
+            if slice_info.error_status != 0 {
                 return Err(Error::SliceError(format!(
                     "error_status is non-zero: {}",
-                    self.current_frame.slice_info[slicenum as usize]
-                        .error_status
+                    slice_info.error_status
                 )));
             }
 
-            let slice_buf_first = &buf[self.current_frame.slice_info
-                [slicenum as usize]
-                .pos as usize..];
+            let slice_buf_first = &buf[slice_info.pos as usize..];
             let slice_buf_end =
-                &slice_buf_first[..self.current_frame.slice_info
-                    [slicenum as usize]
-                    .size as usize
-                    + 8]; // 8 bytes for footer size
+                &slice_buf_first[..slice_info.size as usize + 8]; // 8 bytes for footer size
             if crc32_mpeg2(&slice_buf_end) != 0 {
                 return Err(Error::InvalidInputData(
                     "CRC mismatch".to_owned(),
@@ -851,10 +844,7 @@ impl Decoder {
             self.reset_slice_states(slicenum as usize);
         }
 
-        let mut coder = RangeCoder::new(
-            &buf[self.current_frame.slice_info[slicenum as usize].pos
-                as usize..],
-        );
+        let mut coder = RangeCoder::new(&buf[slice_info.pos as usize..]);
 
         // 4. Bitstream
         let mut state: [u8; CONTEXT_SIZE as usize] =
@@ -880,9 +870,7 @@ impl Decoder {
             coder.sentinal_end();
             let offset = coder.get_pos() - 1;
             Some(Coder::new(
-                &buf[self.current_frame.slice_info[slicenum as usize].pos
-                    as usize
-                    + offset as usize..],
+                &buf[slice_info.pos as usize + offset as usize..],
             ))
         } else {
             None
