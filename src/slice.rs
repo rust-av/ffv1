@@ -56,11 +56,7 @@ pub fn is_keyframe(buf: &[u8]) -> bool {
 /// 9.1.1. Multi-threading Support and Independence of Slices.
 ///
 /// See: 4.8. Slice Footer
-pub fn count_slices(
-    buf: &[u8],
-    header: &mut InternalFrame,
-    ec: bool,
-) -> Result<()> {
+pub fn count_slices(buf: &[u8], ec: bool) -> Result<Vec<SliceInfo>> {
     let mut footer_size = 3;
     if ec {
         footer_size += 5;
@@ -70,7 +66,7 @@ pub fn count_slices(
     // so we can derive the slice positions within the packet, and
     // allow multithreading.
     let mut end_pos = buf.len() as isize;
-    header.slice_info = Vec::new();
+    let mut slice_info = Vec::new();
     while end_pos > 0 {
         let mut info: SliceInfo = Default::default();
 
@@ -85,7 +81,7 @@ pub fn count_slices(
 
         info.pos = end_pos - size as isize - footer_size as isize;
         let pos = info.pos;
-        header.slice_info.push(info);
+        slice_info.push(info);
         end_pos = pos;
     }
 
@@ -94,7 +90,7 @@ pub fn count_slices(
     }
 
     // Preappend here
-    header.slice_info.reverse();
+    slice_info.reverse();
 
-    Ok(())
+    Ok(slice_info)
 }
