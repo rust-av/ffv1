@@ -298,15 +298,13 @@ impl Decoder {
     ///
     /// See: 4.5. Slice Header
     pub fn parse_slice_header(
-        &mut self,
+        current_slice: &mut Slice,
+        record: &ConfigRecord,
         coder: &mut RangeCoder,
-        slicenum: usize,
     ) {
         // 4. Bitstream
         let mut slice_state: [u8; CONTEXT_SIZE as usize] =
             [128; CONTEXT_SIZE as usize];
-        let current_slice = &mut self.current_frame.slices[slicenum];
-        let record = &self.record;
 
         // 4.5.1. slice_x
         current_slice.header.slice_x = coder.ur(&mut slice_state);
@@ -352,22 +350,20 @@ impl Decoder {
         //      * 4.6.4. slice_pixel_y
         //      * 4.7.2. slice_pixel_width
         //      * 4.7.3. slice_pixel_x
-        current_slice.start_x = current_slice.header.slice_x
-            * self.record.width
+        current_slice.start_x = current_slice.header.slice_x * record.width
             / (record.num_h_slices_minus1 as u32 + 1);
-        current_slice.start_y = current_slice.header.slice_y
-            * self.record.height
+        current_slice.start_y = current_slice.header.slice_y * record.height
             / (record.num_v_slices_minus1 as u32 + 1);
         current_slice.width = ((current_slice.header.slice_x
             + current_slice.header.slice_width_minus1
             + 1)
-            * self.record.width
+            * record.width
             / (record.num_h_slices_minus1 as u32 + 1))
             - current_slice.start_x;
         current_slice.height = ((current_slice.header.slice_y
             + current_slice.header.slice_height_minus1
             + 1)
-            * self.record.height
+            * record.height
             / (record.num_v_slices_minus1 as u32 + 1))
             - current_slice.start_y;
     }
@@ -526,14 +522,12 @@ impl Decoder {
     ///
     /// See: * 4.6. Slice Content
     pub fn decode_slice_content(
-        &mut self,
+        current_slice: &mut Slice,
+        record: &ConfigRecord,
         coder: &mut RangeCoder,
         golomb_coder: &mut Option<&mut Coder>,
-        slicenum: usize,
         frame: &mut Frame,
     ) {
-        let current_slice = &mut self.current_frame.slices[slicenum];
-        let record = &self.record;
         // 4.6.1. primary_color_count
         let mut primary_color_count = 1;
         let mut chroma_planes = 0;
@@ -566,7 +560,7 @@ impl Decoder {
                     (
                         current_slice.height as isize,
                         current_slice.width as isize,
-                        self.record.width as isize,
+                        record.width as isize,
                         current_slice.start_x as isize,
                         current_slice.start_y as isize,
                         quant_table,
@@ -580,7 +574,7 @@ impl Decoder {
                         (current_slice.width as f64
                             / (1 << record.log2_h_chroma_subsample) as f64)
                             .ceil() as isize,
-                        (self.record.width as f64
+                        (record.width as f64
                             / (1 << record.log2_h_chroma_subsample) as f64)
                             .ceil() as isize,
                         (current_slice.start_x as f64
@@ -626,7 +620,7 @@ impl Decoder {
                 golomb_coder.new_plane(current_slice.width as u32);
             }
 
-            let offset = (current_slice.start_y * self.record.width
+            let offset = (current_slice.start_y * record.width
                 + current_slice.start_x) as isize;
             for y in 0..current_slice.height as isize {
                 // RGB *must* have chroma planes, so this is safe.
@@ -638,7 +632,7 @@ impl Decoder {
                     frame,
                     current_slice.width as isize,
                     current_slice.height as isize,
-                    self.record.width as isize,
+                    record.width as isize,
                     offset,
                     y,
                     0,
@@ -652,7 +646,7 @@ impl Decoder {
                     frame,
                     current_slice.width as isize,
                     current_slice.height as isize,
-                    self.record.width as isize,
+                    record.width as isize,
                     offset,
                     y,
                     1,
@@ -666,7 +660,7 @@ impl Decoder {
                     frame,
                     current_slice.width as isize,
                     current_slice.height as isize,
-                    self.record.width as isize,
+                    record.width as isize,
                     offset,
                     y,
                     2,
@@ -681,7 +675,7 @@ impl Decoder {
                         frame,
                         current_slice.width as isize,
                         current_slice.height as isize,
-                        self.record.width as isize,
+                        record.width as isize,
                         offset,
                         y,
                         3,
@@ -697,7 +691,7 @@ impl Decoder {
                     &frame.buf16,
                     current_slice.width as isize,
                     current_slice.height as isize,
-                    self.record.width as isize,
+                    record.width as isize,
                     offset,
                 );
             } else if record.bits_per_raw_sample >= 9
@@ -709,7 +703,7 @@ impl Decoder {
                     &mut frame.buf16,
                     current_slice.width as isize,
                     current_slice.height as isize,
-                    self.record.width as isize,
+                    record.width as isize,
                     offset,
                     record.bits_per_raw_sample as usize,
                 );
@@ -719,7 +713,7 @@ impl Decoder {
                     &frame.buf32,
                     current_slice.width as isize,
                     current_slice.height as isize,
-                    self.record.width as isize,
+                    record.width as isize,
                     offset,
                 );
             }
@@ -757,7 +751,7 @@ impl Decoder {
         //
         // See: * 4.8.2. error_status
         //      * 4.8.3. slice_crc_parity
-        if self.record.ec == 1 {
+        if record.ec == 1 {
             if slice_info.error_status != 0 {
                 return Err(Error::SliceError(format!(
                     "error_status is non-zero: {}",
@@ -794,14 +788,14 @@ impl Decoder {
             coder.br(&mut state);
         }
 
-        if self.record.coder_type == 2 {
+        if record.coder_type == 2 {
             // Custom state transition table
             coder.set_table(&self.state_transition);
         }
 
-        self.parse_slice_header(&mut coder, slicenum as usize);
+        Self::parse_slice_header(current_slice, record, &mut coder);
 
-        let mut golomb_coder = if self.record.coder_type == 0 {
+        let mut golomb_coder = if record.coder_type == 0 {
             // We're switching to Golomb-Rice mode now so we need the bitstream
             // position.
             //
@@ -817,10 +811,11 @@ impl Decoder {
 
         // Don't worry, I fully understand how non-idiomatic and
         // ugly passing both c and gc is.
-        self.decode_slice_content(
+        Self::decode_slice_content(
+            current_slice,
+            record,
             &mut coder,
             &mut golomb_coder.as_mut(),
-            slicenum as usize,
             frame,
         );
 
