@@ -295,31 +295,31 @@ impl Decoder {
     ///      * 3.8.1.3. Initial Values for the Context Model
     ///      * 3.8.2.4. Initial Values for the VLC context state
     pub fn parse_footers(&mut self, buf: &[u8]) -> Result<()> {
-        let err =
-            count_slices(buf, &mut self.current_frame, self.record.ec != 0);
-        if let Err(err) = err {
-            return Err(Error::SliceError(format!(
-                "couldn't count slices: {}",
-                err
-            )));
-        }
+        let slice_info = count_slices(buf, self.record.ec != 0)?;
+        self.current_frame.slice_info = slice_info;
 
         let mut slices: Vec<Slice> =
             vec![Default::default(); self.current_frame.slice_info.len()];
+
         if !self.current_frame.keyframe {
             if slices.len() != self.current_frame.slices.len() {
                 return Err(Error::SliceError("inter frames must have the same number of slices as the preceding intra frame".to_owned()));
             }
-            for (i, slice) in slices.iter_mut().enumerate() {
-                slice.state = self.current_frame.slices[i].state.clone();
+            for (next, current) in
+                slices.iter_mut().zip(self.current_frame.slices.iter())
+            {
+                next.state = current.state.clone();
             }
+
             if self.record.coder_type == 0 {
-                for (i, slice) in slices.iter_mut().enumerate() {
-                    slice.golomb_state =
-                        self.current_frame.slices[i].golomb_state.clone();
+                for (next, current) in
+                    slices.iter_mut().zip(self.current_frame.slices.iter())
+                {
+                    next.golomb_state = current.golomb_state.clone();
                 }
             }
         }
+
         self.current_frame.slices = slices;
 
         Ok(())
