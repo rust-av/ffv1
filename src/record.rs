@@ -25,14 +25,21 @@ pub struct ConfigRecord {
     pub initial_states: Vec<Vec<Vec<u8>>>,
     pub ec: u8,
     pub intra: u8,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl ConfigRecord {
-    /// Parses the configuration record from the codec private data.
+    /// Parse the configuration record from the codec private data
+    /// and store the width and height provided by the container.
     ///
     /// See: * 4.1. Parameters
     ///      * 4.2. Configuration Record
-    pub fn parse_config_record(buf: &[u8]) -> Result<Self> {
+    pub fn parse_config_record(
+        buf: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<Self> {
         // Before we do anything, CRC check.
         //
         // See: 4.2.2. configuration_record_crc_parity
@@ -243,6 +250,8 @@ impl ConfigRecord {
             initial_states,
             ec,
             intra,
+            width,
+            height,
         };
 
         Ok(config_record)
