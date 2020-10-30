@@ -22,6 +22,7 @@ pub struct ConfigRecord {
         [[[i16; 256]; MAX_CONTEXT_INPUTS as usize]; MAX_QUANT_TABLES as usize],
     pub states_coded: bool,
     pub initial_state_delta: Vec<Vec<Vec<i16>>>, // FIXME: This is horrible
+    pub initial_states: Vec<Vec<Vec<u8>>>,
     pub ec: u8,
     pub intra: u8,
 }
@@ -198,6 +199,24 @@ impl ConfigRecord {
             }
         }
 
+        let mut initial_states = vec![Vec::new(); initial_state_delta.len()];
+        for i in 0..initial_state_delta.len() {
+            initial_states[i] = vec![Vec::new(); initial_state_delta[i].len()];
+            for j in 0..initial_state_delta[i].len() {
+                initial_states[i][j] =
+                    vec![0; initial_state_delta[i][j].len()];
+                for k in 0..initial_state_delta[i][j].len() {
+                    let pred = if j != 0 {
+                        initial_states[i][j - 1][k] as i16
+                    } else {
+                        128 as i16
+                    };
+                    initial_states[i][j][k] =
+                        ((pred + initial_state_delta[i][j][k]) & 255) as u8;
+                }
+            }
+        }
+
         // 4.1.16. ec
         let ec = coder.ur(&mut state) as u8;
         // 4.1.17. intra
@@ -221,6 +240,7 @@ impl ConfigRecord {
             quant_tables,
             states_coded: false,
             initial_state_delta,
+            initial_states,
             ec,
             intra,
         };
