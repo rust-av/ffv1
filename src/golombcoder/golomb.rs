@@ -20,7 +20,7 @@ pub struct Coder<'a> {
 /// defined in 3.8.2.4.
 ///
 /// Initial Values for the VLC context state.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct State {
     drift: i32,
     error_sum: i32,
@@ -28,12 +28,8 @@ pub struct State {
     count: i32,
 }
 
-impl State {
-    /// NewState creates a Golomb-Rice state with the initial values defined in
-    /// 3.8.2.4.
-    ///
-    /// Initial Values for the VLC context state.
-    pub fn new() -> Self {
+impl Default for State {
+    fn default() -> Self {
         Self {
             drift: 0,
             error_sum: 4,
