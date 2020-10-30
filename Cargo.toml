@@ -9,7 +9,7 @@ crc = "1.8"
 thiserror = "1.0"
 
 [workspace]
-members = ["ffv1-decoder"]
+members = ["ffv1-decoder", "benchmarks/rust-ffv1"]
 
 [dev-dependencies]
 av-data = "0.2.1"

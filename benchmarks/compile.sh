@@ -10,7 +10,7 @@ popd
 
 # Compile Rust binary in release mode
 pushd rust-ffv1
-cargo build --release
+cargo build --release --target-dir target
 cp target/release/rust-ffv1 ../builds
 popd
 
