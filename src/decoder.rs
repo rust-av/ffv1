@@ -65,7 +65,6 @@ pub struct Decoder {
     height: u32,
     record: ConfigRecord,
     state_transition: [u8; 256],
-    initial_states: Vec<Vec<Vec<u8>>>, // FIXME: This is horrible
     current_frame: InternalFrame,
 }
 
@@ -107,7 +106,6 @@ impl Decoder {
             height,
             record,
             state_transition: [0; 256],
-            initial_states: Vec::new(),
             current_frame: InternalFrame {
                 keyframe: false,
                 slice_info: Vec::new(),
@@ -265,27 +263,6 @@ impl Decoder {
             self.state_transition[i] = (*default_state_transition as i16
                 + self.record.state_transition_delta[i])
                 as u8;
-        }
-
-        self.initial_states =
-            vec![Vec::new(); self.record.initial_state_delta.len()];
-        for i in 0..self.record.initial_state_delta.len() {
-            self.initial_states[i] =
-                vec![Vec::new(); self.record.initial_state_delta[i].len()];
-            for j in 0..self.record.initial_state_delta[i].len() {
-                self.initial_states[i][j] =
-                    vec![0; self.record.initial_state_delta[i][j].len()];
-                for k in 0..self.record.initial_state_delta[i][j].len() {
-                    let pred = if j != 0 {
-                        self.initial_states[i][j - 1][k] as i16
-                    } else {
-                        128 as i16
-                    };
-                    self.initial_states[i][j][k] =
-                        ((pred + self.record.initial_state_delta[i][j][k])
-                            & 255) as u8;
-                }
-            }
         }
     }
 
@@ -759,7 +736,7 @@ impl Decoder {
     pub fn reset_slice_states(&mut self, slicenum: usize) {
         let current_slice = &mut self.current_frame.slices[slicenum];
         // Range coder states
-        current_slice.state = self.initial_states.clone();
+        current_slice.state = self.record.initial_states.clone();
 
         // Golomb-Rice Code states
         if self.record.coder_type == 0 {
