@@ -733,15 +733,17 @@ impl Decoder {
     }
 
     /// Resets the range coder and Golomb-Rice coder states.
-    pub fn reset_slice_states(&mut self, slicenum: usize) {
-        let current_slice = &mut self.current_frame.slices[slicenum];
+    pub fn reset_slice_states(
+        current_slice: &mut Slice,
+        record: &ConfigRecord,
+    ) {
         // Range coder states
-        current_slice.state = self.record.initial_states.clone();
+        current_slice.state = record.initial_states.clone();
 
         // Golomb-Rice Code states
-        if self.record.coder_type == 0 {
-            let count = self.record.quant_table_set_count as usize;
-            current_slice.golomb_state = self.record.context_count[..count]
+        if record.coder_type == 0 {
+            let count = record.quant_table_set_count as usize;
+            current_slice.golomb_state = record.context_count[..count]
                 .iter()
                 .map(|&len| vec![Default::default(); len as usize])
                 .collect();
@@ -755,6 +757,8 @@ impl Decoder {
         frame: &mut Frame,
     ) -> Result<()> {
         let slice_info = self.current_frame.slice_info[slicenum as usize];
+        let current_slice = &mut self.current_frame.slices[slicenum as usize];
+        let record = &self.record;
         // Before we do anything, let's try and check the integrity
         //
         // See: * 4.8.2. error_status
@@ -782,7 +786,7 @@ impl Decoder {
         // See: * 3.8.1.3. Initial Values for the Context Model
         //      * 3.8.2.4. Initial Values for the VLC context state
         if self.current_frame.keyframe {
-            self.reset_slice_states(slicenum as usize);
+            Self::reset_slice_states(current_slice, record);
         }
 
         let mut coder = RangeCoder::new(&buf[slice_info.pos as usize..]);
