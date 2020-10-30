@@ -414,10 +414,10 @@ impl Decoder {
     /// See: 4.7. Line
     #[allow(clippy::too_many_arguments)]
     pub fn decode_line(
-        &mut self,
+        current_slice: &mut Slice,
+        record: &ConfigRecord,
         coder: &mut RangeCoder,
         golomb_coder: &mut Option<&mut Coder>,
-        slicenum: usize,
         frame: &mut Frame,
         width: isize,
         height: isize,
@@ -427,7 +427,6 @@ impl Decoder {
         plane: isize,
         qt: isize,
     ) {
-        let current_slice = &mut self.current_frame.slices[slicenum];
         // Runs are horizontal and thus cannot run more than a line.
         //
         // See: 3.8.2.2.1. Run Length Coding
@@ -436,13 +435,13 @@ impl Decoder {
         }
 
         // 3.8. Coding of the Sample Difference
-        let shift = if self.record.colorspace_type == 1 {
-            self.record.bits_per_raw_sample + 1
+        let shift = if record.colorspace_type == 1 {
+            record.bits_per_raw_sample + 1
         } else {
-            self.record.bits_per_raw_sample
+            record.bits_per_raw_sample
         };
 
-        let quant_table = &self.record.quant_tables
+        let quant_table = &record.quant_tables
             [current_slice.header.quant_table_set_index[qt as usize] as usize];
 
         // 4.7.4. sample_difference
@@ -452,8 +451,8 @@ impl Decoder {
             // See pred.go for details.
             #[allow(non_snake_case)]
             #[allow(clippy::many_single_char_names)]
-            let (T, L, t, l, tr, tl) = if self.record.bits_per_raw_sample == 8
-                && self.record.colorspace_type != 1
+            let (T, L, t, l, tr, tl) = if record.bits_per_raw_sample == 8
+                && record.colorspace_type != 1
             {
                 derive_borders(
                     &frame.buf[plane as usize][offset as usize..],
@@ -463,8 +462,8 @@ impl Decoder {
                     height,
                     stride,
                 )
-            } else if self.record.bits_per_raw_sample == 16
-                && self.record.colorspace_type == 1
+            } else if record.bits_per_raw_sample == 16
+                && record.colorspace_type == 1
             {
                 derive_borders(
                     &frame.buf32[plane as usize][offset as usize..],
@@ -517,8 +516,8 @@ impl Decoder {
 
             // 3.8. Coding of the Sample Difference
             let mut val = diff;
-            if self.record.colorspace_type == 0
-                && self.record.bits_per_raw_sample == 16
+            if record.colorspace_type == 0
+                && record.bits_per_raw_sample == 16
                 && golomb_coder.is_none()
             {
                 // 3.3. Median Predictor
@@ -534,14 +533,12 @@ impl Decoder {
 
             val &= (1 << shift) - 1;
 
-            if self.record.bits_per_raw_sample == 8
-                && self.record.colorspace_type != 1
-            {
+            if record.bits_per_raw_sample == 8 && record.colorspace_type != 1 {
                 frame.buf[plane as usize]
                     [offset as usize + (yy as usize * stride as usize) + x] =
                     val as u8;
-            } else if self.record.bits_per_raw_sample == 16
-                && self.record.colorspace_type == 1
+            } else if record.bits_per_raw_sample == 16
+                && record.colorspace_type == 1
             {
                 frame.buf32[plane as usize]
                     [offset as usize + (yy as usize * stride as usize) + x] =
@@ -564,18 +561,20 @@ impl Decoder {
         slicenum: usize,
         frame: &mut Frame,
     ) {
+        let current_slice = &mut self.current_frame.slices[slicenum];
+        let record = &self.record;
         // 4.6.1. primary_color_count
         let mut primary_color_count = 1;
         let mut chroma_planes = 0;
-        if self.record.chroma_planes {
+        if record.chroma_planes {
             chroma_planes = 2;
             primary_color_count += 2;
         }
-        if self.record.extra_plane {
+        if record.extra_plane {
             primary_color_count += 1;
         }
 
-        if self.record.colorspace_type != 1 {
+        if record.colorspace_type != 1 {
             // YCbCr Mode
             //
             // Planes are independent.
@@ -594,35 +593,30 @@ impl Decoder {
                 ) = if p == 0 || p == 1 + chroma_planes {
                     let quant_table = if p == 0 { 0 } else { chroma_planes };
                     (
-                        self.current_frame.slices[slicenum].height as isize,
-                        self.current_frame.slices[slicenum].width as isize,
+                        current_slice.height as isize,
+                        current_slice.width as isize,
                         self.width as isize,
-                        self.current_frame.slices[slicenum].start_x as isize,
-                        self.current_frame.slices[slicenum].start_y as isize,
+                        current_slice.start_x as isize,
+                        current_slice.start_y as isize,
                         quant_table,
                     )
                 } else {
                     // This is, of course, silly, but I want to do it "by the spec".
                     (
-                        (self.current_frame.slices[slicenum].height as f64
-                            / (1 << self.record.log2_v_chroma_subsample)
-                                as f64)
+                        (current_slice.height as f64
+                            / (1 << record.log2_v_chroma_subsample) as f64)
                             .ceil() as isize,
-                        (self.current_frame.slices[slicenum].width as f64
-                            / (1 << self.record.log2_h_chroma_subsample)
-                                as f64)
+                        (current_slice.width as f64
+                            / (1 << record.log2_h_chroma_subsample) as f64)
                             .ceil() as isize,
                         (self.width as f64
-                            / (1 << self.record.log2_h_chroma_subsample)
-                                as f64)
+                            / (1 << record.log2_h_chroma_subsample) as f64)
                             .ceil() as isize,
-                        (self.current_frame.slices[slicenum].start_x as f64
-                            / ((1 << self.record.log2_v_chroma_subsample)
-                                as f64))
+                        (current_slice.start_x as f64
+                            / ((1 << record.log2_v_chroma_subsample) as f64))
                             .ceil() as isize,
-                        (self.current_frame.slices[slicenum].start_y as f64
-                            / ((1 << self.record.log2_h_chroma_subsample)
-                                as f64))
+                        (current_slice.start_y as f64
+                            / ((1 << record.log2_h_chroma_subsample) as f64))
                             .ceil() as isize,
                         1,
                     )
@@ -635,10 +629,11 @@ impl Decoder {
 
                 for y in 0..plane_pixel_height {
                     let offset = start_y * plane_pixel_stride + start_x;
-                    self.decode_line(
+                    Self::decode_line(
+                        current_slice,
+                        record,
                         coder,
                         golomb_coder,
-                        slicenum,
                         frame,
                         plane_pixel_width,
                         plane_pixel_height,
@@ -657,68 +652,64 @@ impl Decoder {
             //
             // See: 3.7.2. RGB
             if let Some(ref mut golomb_coder) = golomb_coder {
-                golomb_coder.new_plane(
-                    self.current_frame.slices[slicenum].width as u32,
-                );
+                golomb_coder.new_plane(current_slice.width as u32);
             }
 
-            let offset = (self.current_frame.slices[slicenum].start_y
-                * self.width
-                + self.current_frame.slices[slicenum].start_x)
-                as isize;
-            for y in 0..self.current_frame.slices[slicenum].height as isize {
+            let offset = (current_slice.start_y * self.width
+                + current_slice.start_x) as isize;
+            for y in 0..current_slice.height as isize {
                 // RGB *must* have chroma planes, so this is safe.
-                self.decode_line(
+                Self::decode_line(
+                    current_slice,
+                    record,
                     coder,
                     golomb_coder,
-                    //self.current_frame.slices[slicenum],
-                    slicenum,
                     frame,
-                    self.current_frame.slices[slicenum].width as isize,
-                    self.current_frame.slices[slicenum].height as isize,
+                    current_slice.width as isize,
+                    current_slice.height as isize,
                     self.width as isize,
                     offset,
                     y,
                     0,
                     0,
                 );
-                self.decode_line(
+                Self::decode_line(
+                    current_slice,
+                    record,
                     coder,
                     golomb_coder,
-                    //self.current_frame.slices[slicenum],
-                    slicenum,
                     frame,
-                    self.current_frame.slices[slicenum].width as isize,
-                    self.current_frame.slices[slicenum].height as isize,
+                    current_slice.width as isize,
+                    current_slice.height as isize,
                     self.width as isize,
                     offset,
                     y,
                     1,
                     1,
                 );
-                self.decode_line(
+                Self::decode_line(
+                    current_slice,
+                    record,
                     coder,
                     golomb_coder,
-                    //self.current_frame.slices[slicenum],
-                    slicenum,
                     frame,
-                    self.current_frame.slices[slicenum].width as isize,
-                    self.current_frame.slices[slicenum].height as isize,
+                    current_slice.width as isize,
+                    current_slice.height as isize,
                     self.width as isize,
                     offset,
                     y,
                     2,
                     1,
                 );
-                if self.record.extra_plane {
-                    self.decode_line(
+                if record.extra_plane {
+                    Self::decode_line(
+                        current_slice,
+                        record,
                         coder,
                         golomb_coder,
-                        //self.current_frame.slices[slicenum],
-                        slicenum,
                         frame,
-                        self.current_frame.slices[slicenum].width as isize,
-                        self.current_frame.slices[slicenum].height as isize,
+                        current_slice.width as isize,
+                        current_slice.height as isize,
                         self.width as isize,
                         offset,
                         y,
@@ -729,34 +720,34 @@ impl Decoder {
             }
 
             // Convert to RGB all at once, cache locality be damned.
-            if self.record.bits_per_raw_sample == 8 {
+            if record.bits_per_raw_sample == 8 {
                 rct8(
                     &mut frame.buf,
                     &frame.buf16,
-                    self.current_frame.slices[slicenum].width as isize,
-                    self.current_frame.slices[slicenum].height as isize,
+                    current_slice.width as isize,
+                    current_slice.height as isize,
                     self.width as isize,
                     offset,
                 );
-            } else if self.record.bits_per_raw_sample >= 9
-                && self.record.bits_per_raw_sample <= 15
-                && !self.record.extra_plane
+            } else if record.bits_per_raw_sample >= 9
+                && record.bits_per_raw_sample <= 15
+                && !record.extra_plane
             {
                 // See: 3.7.2. RGB
                 rct_mid(
                     &mut frame.buf16,
-                    self.current_frame.slices[slicenum].width as isize,
-                    self.current_frame.slices[slicenum].height as isize,
+                    current_slice.width as isize,
+                    current_slice.height as isize,
                     self.width as isize,
                     offset,
-                    self.record.bits_per_raw_sample as usize,
+                    record.bits_per_raw_sample as usize,
                 );
             } else {
                 rct16(
                     &mut frame.buf16,
                     &frame.buf32,
-                    self.current_frame.slices[slicenum].width as isize,
-                    self.current_frame.slices[slicenum].height as isize,
+                    current_slice.width as isize,
+                    current_slice.height as isize,
                     self.width as isize,
                     offset,
                 );
