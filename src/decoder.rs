@@ -427,6 +427,7 @@ impl Decoder {
         plane: isize,
         qt: isize,
     ) {
+        let current_slice = &mut self.current_frame.slices[slicenum];
         // Runs are horizontal and thus cannot run more than a line.
         //
         // See: 3.8.2.2.1. Run Length Coding
@@ -434,15 +435,18 @@ impl Decoder {
             golomb_coder.new_line();
         }
 
+        // 3.8. Coding of the Sample Difference
+        let shift = if self.record.colorspace_type == 1 {
+            self.record.bits_per_raw_sample + 1
+        } else {
+            self.record.bits_per_raw_sample
+        };
+
+        let quant_table = &self.record.quant_tables
+            [current_slice.header.quant_table_set_index[qt as usize] as usize];
+
         // 4.7.4. sample_difference
         for x in 0..width as usize {
-            // 3.8. Coding of the Sample Difference
-            let shift = if self.record.colorspace_type == 1 {
-                self.record.bits_per_raw_sample + 1
-            } else {
-                self.record.bits_per_raw_sample
-            };
-
             // Derive neighbours
             //
             // See pred.go for details.
@@ -485,18 +489,7 @@ impl Decoder {
             //
             // See also: * 3.4. Context
             //           * 3.6. Quantization Table Set Indexes
-            let mut context = get_context(
-                &self.record.quant_tables[self.current_frame.slices[slicenum]
-                    .header
-                    .quant_table_set_index[qt as usize]
-                    as usize],
-                T,
-                L,
-                t,
-                l,
-                tr,
-                tl,
-            );
+            let mut context = get_context(quant_table, T, L, t, l, tr, tl);
             let sign = if context < 0 {
                 context = -context;
                 true
@@ -507,13 +500,14 @@ impl Decoder {
             let mut diff = if let Some(ref mut golomb_coder) = golomb_coder {
                 golomb_coder.sg(
                     context,
-                    &mut self.current_frame.slices[slicenum].golomb_state
-                        [qt as usize][context as usize],
+                    &mut current_slice.golomb_state[qt as usize]
+                        [context as usize],
                     shift as usize,
                 )
             } else {
-                coder.sr(&mut self.current_frame.slices[slicenum].state
-                    [qt as usize][context as usize])
+                coder
+                    .sr(&mut current_slice.state[qt as usize]
+                        [context as usize])
             };
 
             // 3.4. Context
