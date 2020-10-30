@@ -336,44 +336,37 @@ impl Decoder {
         // 4. Bitstream
         let mut slice_state: [u8; CONTEXT_SIZE as usize] =
             [128; CONTEXT_SIZE as usize];
+        let current_slice = &mut self.current_frame.slices[slicenum];
+        let record = &self.record;
 
         // 4.5.1. slice_x
-        self.current_frame.slices[slicenum].header.slice_x =
-            coder.ur(&mut slice_state);
+        current_slice.header.slice_x = coder.ur(&mut slice_state);
         // 4.5.2. slice_y
-        self.current_frame.slices[slicenum].header.slice_y =
-            coder.ur(&mut slice_state);
+        current_slice.header.slice_y = coder.ur(&mut slice_state);
         // 4.5.3 slice_width
-        self.current_frame.slices[slicenum]
-            .header
-            .slice_width_minus1 = coder.ur(&mut slice_state);
+        current_slice.header.slice_width_minus1 = coder.ur(&mut slice_state);
         // 4.5.4 slice_height
-        self.current_frame.slices[slicenum]
-            .header
-            .slice_height_minus1 = coder.ur(&mut slice_state);
+        current_slice.header.slice_height_minus1 = coder.ur(&mut slice_state);
 
         // 4.5.5. quant_table_set_index_count
         let mut quant_table_set_index_count = 1;
-        if self.record.chroma_planes {
+        if record.chroma_planes {
             quant_table_set_index_count += 1;
         }
-        if self.record.extra_plane {
+        if record.extra_plane {
             quant_table_set_index_count += 1;
         }
 
         // 4.5.6. quant_table_set_index
-        self.current_frame.slices[slicenum]
-            .header
-            .quant_table_set_index =
+        current_slice.header.quant_table_set_index =
             vec![0; quant_table_set_index_count as usize];
         for i in 0..quant_table_set_index_count {
-            self.current_frame.slices[slicenum]
-                .header
-                .quant_table_set_index[i] = coder.ur(&mut slice_state) as u8;
+            current_slice.header.quant_table_set_index[i] =
+                coder.ur(&mut slice_state) as u8;
         }
 
         // 4.5.7. picture_structure
-        self.current_frame.slices[slicenum].header.picture_structure =
+        current_slice.header.picture_structure =
             coder.ur(&mut slice_state) as u8;
 
         // It's really weird for slices within the same frame to code
@@ -381,10 +374,8 @@ impl Decoder {
         //
         // See: * 4.5.8. sar_num
         //      * 4.5.9. sar_den
-        self.current_frame.slices[slicenum].header.sar_num =
-            coder.ur(&mut slice_state);
-        self.current_frame.slices[slicenum].header.sar_den =
-            coder.ur(&mut slice_state);
+        current_slice.header.sar_num = coder.ur(&mut slice_state);
+        current_slice.header.sar_den = coder.ur(&mut slice_state);
 
         // Calculate bounaries for easy use elsewhere
         //
@@ -392,30 +383,22 @@ impl Decoder {
         //      * 4.6.4. slice_pixel_y
         //      * 4.7.2. slice_pixel_width
         //      * 4.7.3. slice_pixel_x
-        self.current_frame.slices[slicenum].start_x =
-            self.current_frame.slices[slicenum].header.slice_x * self.width
-                / (self.record.num_h_slices_minus1 as u32 + 1);
-        self.current_frame.slices[slicenum].start_y =
-            self.current_frame.slices[slicenum].header.slice_y * self.height
-                / (self.record.num_v_slices_minus1 as u32 + 1);
-        self.current_frame.slices[slicenum].width =
-            ((self.current_frame.slices[slicenum].header.slice_x
-                + self.current_frame.slices[slicenum]
-                    .header
-                    .slice_width_minus1
-                + 1)
-                * self.width
-                / (self.record.num_h_slices_minus1 as u32 + 1))
-                - self.current_frame.slices[slicenum].start_x;
-        self.current_frame.slices[slicenum].height =
-            ((self.current_frame.slices[slicenum].header.slice_y
-                + self.current_frame.slices[slicenum]
-                    .header
-                    .slice_height_minus1
-                + 1)
-                * self.height
-                / (self.record.num_v_slices_minus1 as u32 + 1))
-                - self.current_frame.slices[slicenum].start_y;
+        current_slice.start_x = current_slice.header.slice_x * self.width
+            / (record.num_h_slices_minus1 as u32 + 1);
+        current_slice.start_y = current_slice.header.slice_y * self.height
+            / (record.num_v_slices_minus1 as u32 + 1);
+        current_slice.width = ((current_slice.header.slice_x
+            + current_slice.header.slice_width_minus1
+            + 1)
+            * self.width
+            / (record.num_h_slices_minus1 as u32 + 1))
+            - current_slice.start_x;
+        current_slice.height = ((current_slice.header.slice_y
+            + current_slice.header.slice_height_minus1
+            + 1)
+            * self.height
+            / (record.num_v_slices_minus1 as u32 + 1))
+            - current_slice.start_y;
     }
 
     /// Line decoding.
