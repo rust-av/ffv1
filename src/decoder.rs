@@ -422,38 +422,14 @@ impl Decoder {
             // See pred.go for details.
             #[allow(non_snake_case)]
             #[allow(clippy::many_single_char_names)]
-            let (T, L, t, l, tr, tl) = if record.bits_per_raw_sample == 8
-                && record.colorspace_type != 1
-            {
-                derive_borders(
-                    &buf[offset as usize..],
-                    x as isize,
-                    yy,
-                    width,
-                    height,
-                    stride,
-                )
-            } else if record.bits_per_raw_sample == 16
-                && record.colorspace_type == 1
-            {
-                derive_borders(
-                    &buf[offset as usize..],
-                    x as isize,
-                    yy,
-                    width,
-                    height,
-                    stride,
-                )
-            } else {
-                derive_borders(
-                    &buf[offset as usize..],
-                    x as isize,
-                    yy,
-                    width,
-                    height,
-                    stride,
-                )
-            };
+            let (T, L, t, l, tr, tl) = derive_borders(
+                &buf[offset as usize..],
+                x as isize,
+                yy,
+                width,
+                height,
+                stride,
+            );
 
             // See pred.go for details.
             //
@@ -504,18 +480,8 @@ impl Decoder {
 
             val &= (1 << shift) - 1;
 
-            if record.bits_per_raw_sample == 8 && record.colorspace_type != 1 {
-                buf[offset as usize + (yy as usize * stride as usize) + x] =
-                    val.as_();
-            } else if record.bits_per_raw_sample == 16
-                && record.colorspace_type == 1
-            {
-                buf[offset as usize + (yy as usize * stride as usize) + x] =
-                    val.as_();
-            } else {
-                buf[offset as usize + (yy as usize * stride as usize) + x] =
-                    val.as_();
-            }
+            buf[offset as usize + (yy as usize * stride as usize) + x] =
+                val.as_();
         }
     }
 
