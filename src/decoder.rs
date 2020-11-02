@@ -490,6 +490,7 @@ impl Decoder {
     /// Planes are independent.
     ///
     /// See: 3.7.1. YCbCr
+    #[allow(clippy::needless_range_loop)]
     pub fn decode_slice_content_yuv<T>(
         current_slice: &mut Slice,
         record: &ConfigRecord,
