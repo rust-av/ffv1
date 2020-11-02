@@ -1,3 +1,5 @@
+use num_traits::AsPrimitive;
+
 use crate::constants::CONTEXT_SIZE;
 use crate::crc32mpeg2::crc32_mpeg2;
 use crate::error::{Error, Result};
@@ -380,20 +382,22 @@ impl Decoder {
     ///
     /// See: 4.7. Line
     #[allow(clippy::too_many_arguments)]
-    pub fn decode_line(
+    pub fn decode_line<T>(
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut RangeCoder,
         golomb_coder: &mut Option<&mut Coder>,
-        frame: &mut Frame,
+        buf: &mut [T],
         width: isize,
         height: isize,
         stride: isize,
         offset: isize,
         yy: isize,
-        plane: isize,
-        qt: isize,
-    ) {
+        qt: usize,
+    ) where
+        T: AsPrimitive<isize>,
+        i32: AsPrimitive<T>,
+    {
         // Runs are horizontal and thus cannot run more than a line.
         //
         // See: 3.8.2.2.1. Run Length Coding
@@ -422,7 +426,7 @@ impl Decoder {
                 && record.colorspace_type != 1
             {
                 derive_borders(
-                    &frame.buf[plane as usize][offset as usize..],
+                    &buf[offset as usize..],
                     x as isize,
                     yy,
                     width,
@@ -433,7 +437,7 @@ impl Decoder {
                 && record.colorspace_type == 1
             {
                 derive_borders(
-                    &frame.buf32[plane as usize][offset as usize..],
+                    &buf[offset as usize..],
                     x as isize,
                     yy,
                     width,
@@ -442,7 +446,7 @@ impl Decoder {
                 )
             } else {
                 derive_borders(
-                    &frame.buf16[plane as usize][offset as usize..],
+                    &buf[offset as usize..],
                     x as isize,
                     yy,
                     width,
@@ -501,19 +505,179 @@ impl Decoder {
             val &= (1 << shift) - 1;
 
             if record.bits_per_raw_sample == 8 && record.colorspace_type != 1 {
-                frame.buf[plane as usize]
-                    [offset as usize + (yy as usize * stride as usize) + x] =
-                    val as u8;
+                buf[offset as usize + (yy as usize * stride as usize) + x] =
+                    val.as_();
             } else if record.bits_per_raw_sample == 16
                 && record.colorspace_type == 1
             {
-                frame.buf32[plane as usize]
-                    [offset as usize + (yy as usize * stride as usize) + x] =
-                    val as u32;
+                buf[offset as usize + (yy as usize * stride as usize) + x] =
+                    val.as_();
             } else {
-                frame.buf16[plane as usize]
-                    [offset as usize + (yy as usize * stride as usize) + x] =
-                    val as u16;
+                buf[offset as usize + (yy as usize * stride as usize) + x] =
+                    val.as_();
+            }
+        }
+    }
+
+    /// YCbCr Mode
+    ///
+    /// Planes are independent.
+    ///
+    /// See: 3.7.1. YCbCr
+    pub fn decode_slice_content_yuv<T>(
+        current_slice: &mut Slice,
+        record: &ConfigRecord,
+        coder: &mut RangeCoder,
+        golomb_coder: &mut Option<&mut Coder>,
+        buf: &mut Vec<Vec<T>>,
+        primary_color_count: usize,
+        chroma_planes: usize,
+    ) where
+        T: AsPrimitive<isize>,
+        i32: AsPrimitive<T>,
+    {
+        for p in 0..primary_color_count {
+            // See: * 4.6.2. plane_pixel_height
+            //      * 4.7.1. plane_pixel_width
+            let (
+                plane_pixel_height,
+                plane_pixel_width,
+                plane_pixel_stride,
+                start_x,
+                start_y,
+                quant_table,
+            ) = if p == 0 || p == 1 + chroma_planes {
+                let quant_table = if p == 0 { 0 } else { chroma_planes };
+                (
+                    current_slice.height as isize,
+                    current_slice.width as isize,
+                    record.width as isize,
+                    current_slice.start_x as isize,
+                    current_slice.start_y as isize,
+                    quant_table,
+                )
+            } else {
+                // This is, of course, silly, but I want to do it "by the spec".
+                (
+                    (current_slice.height as f64
+                        / (1 << record.log2_v_chroma_subsample) as f64)
+                        .ceil() as isize,
+                    (current_slice.width as f64
+                        / (1 << record.log2_h_chroma_subsample) as f64)
+                        .ceil() as isize,
+                    (record.width as f64
+                        / (1 << record.log2_h_chroma_subsample) as f64)
+                        .ceil() as isize,
+                    (current_slice.start_x as f64
+                        / ((1 << record.log2_v_chroma_subsample) as f64))
+                        .ceil() as isize,
+                    (current_slice.start_y as f64
+                        / ((1 << record.log2_h_chroma_subsample) as f64))
+                        .ceil() as isize,
+                    1,
+                )
+            };
+
+            // 3.8.2.2.1. Run Length Coding
+            if let Some(ref mut golomb_coder) = golomb_coder {
+                golomb_coder.new_plane(plane_pixel_width as u32);
+            }
+
+            for y in 0..plane_pixel_height {
+                let offset = start_y * plane_pixel_stride + start_x;
+                Self::decode_line(
+                    current_slice,
+                    record,
+                    coder,
+                    golomb_coder,
+                    &mut buf[p],
+                    plane_pixel_width,
+                    plane_pixel_height,
+                    plane_pixel_stride,
+                    offset,
+                    y,
+                    quant_table,
+                );
+            }
+        }
+    }
+
+    /// RGB (JPEG2000-RCT) Mode
+    ///
+    /// All planes are coded per line.
+    ///
+    /// See: 3.7.2. RGB
+    pub fn decode_slice_content_rtc<T>(
+        current_slice: &mut Slice,
+        record: &ConfigRecord,
+        coder: &mut RangeCoder,
+        golomb_coder: &mut Option<&mut Coder>,
+        buf: &mut Vec<Vec<T>>,
+    ) where
+        T: AsPrimitive<isize>,
+        i32: AsPrimitive<T>,
+    {
+        if let Some(ref mut golomb_coder) = golomb_coder {
+            golomb_coder.new_plane(current_slice.width as u32);
+        }
+
+        let offset = (current_slice.start_y * record.width
+            + current_slice.start_x) as isize;
+        for y in 0..current_slice.height as isize {
+            // RGB *must* have chroma planes, so this is safe.
+            Self::decode_line(
+                current_slice,
+                record,
+                coder,
+                golomb_coder,
+                &mut buf[0],
+                current_slice.width as isize,
+                current_slice.height as isize,
+                record.width as isize,
+                offset,
+                y,
+                0,
+            );
+            Self::decode_line(
+                current_slice,
+                record,
+                coder,
+                golomb_coder,
+                &mut buf[1],
+                current_slice.width as isize,
+                current_slice.height as isize,
+                record.width as isize,
+                offset,
+                y,
+                1,
+            );
+            Self::decode_line(
+                current_slice,
+                record,
+                coder,
+                golomb_coder,
+                &mut buf[2],
+                current_slice.width as isize,
+                current_slice.height as isize,
+                record.width as isize,
+                offset,
+                y,
+                1,
+            );
+            if record.extra_plane {
+                Self::decode_line(
+                    current_slice,
+                    record,
+                    coder,
+                    golomb_coder,
+                    &mut buf[3],
+                    current_slice.width as isize,
+                    current_slice.height as isize,
+                    record.width as isize,
+                    offset,
+                    y,
+                    2,
+                );
             }
         }
     }
@@ -540,152 +704,38 @@ impl Decoder {
         }
 
         if record.colorspace_type != 1 {
-            // YCbCr Mode
-            //
-            // Planes are independent.
-            //
-            // See: 3.7.1. YCbCr
-            for p in 0..primary_color_count {
-                // See: * 4.6.2. plane_pixel_height
-                //      * 4.7.1. plane_pixel_width
-                let (
-                    plane_pixel_height,
-                    plane_pixel_width,
-                    plane_pixel_stride,
-                    start_x,
-                    start_y,
-                    quant_table,
-                ) = if p == 0 || p == 1 + chroma_planes {
-                    let quant_table = if p == 0 { 0 } else { chroma_planes };
-                    (
-                        current_slice.height as isize,
-                        current_slice.width as isize,
-                        record.width as isize,
-                        current_slice.start_x as isize,
-                        current_slice.start_y as isize,
-                        quant_table,
-                    )
-                } else {
-                    // This is, of course, silly, but I want to do it "by the spec".
-                    (
-                        (current_slice.height as f64
-                            / (1 << record.log2_v_chroma_subsample) as f64)
-                            .ceil() as isize,
-                        (current_slice.width as f64
-                            / (1 << record.log2_h_chroma_subsample) as f64)
-                            .ceil() as isize,
-                        (record.width as f64
-                            / (1 << record.log2_h_chroma_subsample) as f64)
-                            .ceil() as isize,
-                        (current_slice.start_x as f64
-                            / ((1 << record.log2_v_chroma_subsample) as f64))
-                            .ceil() as isize,
-                        (current_slice.start_y as f64
-                            / ((1 << record.log2_h_chroma_subsample) as f64))
-                            .ceil() as isize,
-                        1,
-                    )
-                };
-
-                // 3.8.2.2.1. Run Length Coding
-                if let Some(ref mut golomb_coder) = golomb_coder {
-                    golomb_coder.new_plane(plane_pixel_width as u32);
-                }
-
-                for y in 0..plane_pixel_height {
-                    let offset = start_y * plane_pixel_stride + start_x;
-                    Self::decode_line(
-                        current_slice,
-                        record,
-                        coder,
-                        golomb_coder,
-                        frame,
-                        plane_pixel_width,
-                        plane_pixel_height,
-                        plane_pixel_stride,
-                        offset,
-                        y,
-                        p,
-                        quant_table,
-                    );
-                }
+            if record.bits_per_raw_sample == 8 {
+                Self::decode_slice_content_yuv(
+                    current_slice,
+                    record,
+                    coder,
+                    golomb_coder,
+                    &mut frame.buf,
+                    primary_color_count,
+                    chroma_planes,
+                );
+            } else if record.bits_per_raw_sample == 16 {
+                Self::decode_slice_content_yuv(
+                    current_slice,
+                    record,
+                    coder,
+                    golomb_coder,
+                    &mut frame.buf16,
+                    primary_color_count,
+                    chroma_planes,
+                );
             }
         } else {
-            // RGB (JPEG2000-RCT) Mode
-            //
-            // All planes are coded per line.
-            //
-            // See: 3.7.2. RGB
-            if let Some(ref mut golomb_coder) = golomb_coder {
-                golomb_coder.new_plane(current_slice.width as u32);
-            }
-
             let offset = (current_slice.start_y * record.width
                 + current_slice.start_x) as isize;
-            for y in 0..current_slice.height as isize {
-                // RGB *must* have chroma planes, so this is safe.
-                Self::decode_line(
-                    current_slice,
-                    record,
-                    coder,
-                    golomb_coder,
-                    frame,
-                    current_slice.width as isize,
-                    current_slice.height as isize,
-                    record.width as isize,
-                    offset,
-                    y,
-                    0,
-                    0,
-                );
-                Self::decode_line(
-                    current_slice,
-                    record,
-                    coder,
-                    golomb_coder,
-                    frame,
-                    current_slice.width as isize,
-                    current_slice.height as isize,
-                    record.width as isize,
-                    offset,
-                    y,
-                    1,
-                    1,
-                );
-                Self::decode_line(
-                    current_slice,
-                    record,
-                    coder,
-                    golomb_coder,
-                    frame,
-                    current_slice.width as isize,
-                    current_slice.height as isize,
-                    record.width as isize,
-                    offset,
-                    y,
-                    2,
-                    1,
-                );
-                if record.extra_plane {
-                    Self::decode_line(
-                        current_slice,
-                        record,
-                        coder,
-                        golomb_coder,
-                        frame,
-                        current_slice.width as isize,
-                        current_slice.height as isize,
-                        record.width as isize,
-                        offset,
-                        y,
-                        3,
-                        2,
-                    );
-                }
-            }
-
-            // Convert to RGB all at once, cache locality be damned.
             if record.bits_per_raw_sample == 8 {
+                Self::decode_slice_content_rtc(
+                    current_slice,
+                    record,
+                    coder,
+                    golomb_coder,
+                    &mut frame.buf16,
+                );
                 rct8(
                     &mut frame.buf,
                     &frame.buf16,
@@ -698,6 +748,13 @@ impl Decoder {
                 && record.bits_per_raw_sample <= 15
                 && !record.extra_plane
             {
+                Self::decode_slice_content_rtc(
+                    current_slice,
+                    record,
+                    coder,
+                    golomb_coder,
+                    &mut frame.buf16,
+                );
                 // See: 3.7.2. RGB
                 rct_mid(
                     &mut frame.buf16,
@@ -708,6 +765,13 @@ impl Decoder {
                     record.bits_per_raw_sample as usize,
                 );
             } else {
+                Self::decode_slice_content_rtc(
+                    current_slice,
+                    record,
+                    coder,
+                    golomb_coder,
+                    &mut frame.buf32,
+                );
                 rct16(
                     &mut frame.buf16,
                     &frame.buf32,
