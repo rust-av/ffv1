@@ -805,9 +805,8 @@ impl Decoder {
                 )));
             }
 
-            let slice_buf_first = &buf[slice_info.pos as usize..];
-            let slice_buf_end =
-                &slice_buf_first[..slice_info.size as usize + 8]; // 8 bytes for footer size
+            let slice_buf_first = &buf[slice_info.pos..];
+            let slice_buf_end = &slice_buf_first[..slice_info.size + 8]; // 8 bytes for footer size
             if crc32_mpeg2(&slice_buf_end) != 0 {
                 return Err(Error::InvalidInputData(
                     "CRC mismatch".to_owned(),
@@ -823,7 +822,7 @@ impl Decoder {
             Self::reset_slice_states(current_slice, record);
         }
 
-        let mut coder = RangeCoder::new(&buf[slice_info.pos as usize..]);
+        let mut coder = RangeCoder::new(&buf[slice_info.pos..]);
 
         // 4. Bitstream
         let mut state: [u8; CONTEXT_SIZE as usize] =
@@ -848,9 +847,7 @@ impl Decoder {
             // See: 3.8.1.1.1. Termination
             coder.sentinal_end();
             let offset = coder.get_pos() - 1;
-            Some(Coder::new(
-                &buf[slice_info.pos as usize + offset as usize..],
-            ))
+            Some(Coder::new(&buf[slice_info.pos + offset as usize..]))
         } else {
             None
         };

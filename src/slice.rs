@@ -12,8 +12,8 @@ pub struct InternalFrame {
 
 #[derive(Clone, Default, Copy)]
 pub struct SliceInfo {
-    pub(crate) pos: isize,
-    pub(crate) size: u32,
+    pub(crate) pos: usize,
+    pub(crate) size: usize,
     pub(crate) error_status: u8,
 }
 
@@ -82,13 +82,13 @@ pub fn count_slices(buf: &[u8], ec: bool) -> Result<Vec<SliceInfo>> {
         let mut size = (buf[end_pos as usize - footer_size] as u32) << 16;
         size |= (buf[end_pos as usize - footer_size + 1] as u32) << 8;
         size |= buf[end_pos as usize - footer_size + 2] as u32;
-        info.size = size;
+        info.size = size as usize;
 
         // 4.8.2. error_status
         info.error_status = buf[end_pos as usize - footer_size + 3] as u8;
 
-        info.pos = end_pos - size as isize - footer_size as isize;
-        let pos = info.pos;
+        let pos = end_pos - size as isize - footer_size as isize;
+        info.pos = pos as usize;
         slice_info.push(info);
         end_pos = pos;
     }
