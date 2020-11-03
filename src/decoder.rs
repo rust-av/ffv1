@@ -227,7 +227,7 @@ impl Decoder {
         // Slice threading lazymode (not using sync for now, only sequential code,
         // FIXME there could be errors here)
         for i in 0..self.current_frame.slices.len() {
-            let err = self.decode_slice(frame_input, i as isize, &mut frame);
+            let err = self.decode_slice(frame_input, i, &mut frame);
             if let Err(err) = err {
                 return Err(Error::SliceError(format!(
                     "slice {} failed: {}",
@@ -787,11 +787,11 @@ impl Decoder {
     pub fn decode_slice(
         &mut self,
         buf: &[u8],
-        slicenum: isize,
+        slicenum: usize,
         frame: &mut Frame,
     ) -> Result<()> {
-        let slice_info = self.current_frame.slice_info[slicenum as usize];
-        let current_slice = &mut self.current_frame.slices[slicenum as usize];
+        let slice_info = self.current_frame.slice_info[slicenum];
+        let current_slice = &mut self.current_frame.slices[slicenum];
         let record = &self.record;
         // Before we do anything, let's try and check the integrity
         //
