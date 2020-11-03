@@ -20,12 +20,9 @@ pub struct SliceInfo {
 #[derive(Clone, Default)]
 pub struct Slice {
     pub(crate) header: SliceHeader,
-    pub(crate) start_x: u32,
-    pub(crate) start_y: u32,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
     pub(crate) state: Vec<Vec<Vec<u8>>>,
     pub(crate) golomb_state: Vec<Vec<State>>,
+    pub(crate) planes: Vec<SlicePlane>,
 }
 
 #[derive(Clone, Default)]
@@ -38,6 +35,17 @@ pub struct SliceHeader {
     pub(crate) picture_structure: u8,
     pub(crate) sar_num: u32,
     pub(crate) sar_den: u32,
+}
+
+#[derive(Clone)]
+pub struct SlicePlane {
+    pub(crate) start_x: u32,
+    pub(crate) start_y: u32,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+    pub(crate) stride: u32,
+    pub(crate) offset: usize,
+    pub(crate) quant: u8,
 }
 
 /// Determines whether a given frame is a keyframe.
