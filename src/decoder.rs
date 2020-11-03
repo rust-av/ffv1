@@ -599,12 +599,13 @@ impl Decoder {
         T: AsPrimitive<isize>,
         i32: AsPrimitive<T>,
     {
+        let planes = &current_slice.planes;
         // All the planes have the same dimension
         // Just the quantizer change.
-        let stride = current_slice.planes[0].stride as usize;
-        let width = current_slice.planes[0].width as usize;
-        let height = current_slice.planes[0].height as usize;
-        let offset = current_slice.planes[0].offset;
+        let stride = planes[0].stride as usize;
+        let width = planes[0].width as usize;
+        let height = planes[0].height as usize;
+        let offset = planes[0].offset;
 
         let header = &current_slice.header;
         let state = &mut current_slice.state;
@@ -615,50 +616,7 @@ impl Decoder {
         }
 
         for y in 0..height {
-            // RGB *must* have chroma planes, so this is safe.
-            Self::decode_line(
-                header,
-                record,
-                coder,
-                state,
-                golomb_coder,
-                golomb_state,
-                &mut buf[0][offset..],
-                width,
-                height,
-                stride,
-                y,
-                0,
-            );
-            Self::decode_line(
-                header,
-                record,
-                coder,
-                state,
-                golomb_coder,
-                golomb_state,
-                &mut buf[1][offset..],
-                width,
-                height,
-                stride,
-                y,
-                1,
-            );
-            Self::decode_line(
-                header,
-                record,
-                coder,
-                state,
-                golomb_coder,
-                golomb_state,
-                &mut buf[2][offset..],
-                width,
-                height,
-                stride,
-                y,
-                1,
-            );
-            if record.extra_plane {
+            for (plane, buf) in planes.iter().zip(buf.iter_mut()) {
                 Self::decode_line(
                     header,
                     record,
@@ -666,12 +624,12 @@ impl Decoder {
                     state,
                     golomb_coder,
                     golomb_state,
-                    &mut buf[3][offset..],
+                    &mut buf[offset..],
                     width,
                     height,
                     stride,
                     y,
-                    2,
+                    plane.quant as usize,
                 );
             }
         }
