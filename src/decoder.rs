@@ -4,7 +4,7 @@ use crate::constants::CONTEXT_SIZE;
 use crate::crc32mpeg2::crc32_mpeg2;
 use crate::error::{Error, Result};
 use crate::golomb::{Coder, State};
-use crate::jpeg2000rct::{rct16, rct8, rct_mid};
+use crate::jpeg2000rct::RCT;
 use crate::pred::{derive_borders, get_context, get_median};
 use crate::range::RangeCoder;
 use crate::rangecoder::tables::DEFAULT_STATE_TRANSITION;
@@ -709,7 +709,7 @@ impl Decoder {
             let stride = current_slice.planes[0].stride as usize;
             let width = current_slice.planes[0].width as usize;
             let height = current_slice.planes[0].height as usize;
-            let offset = current_slice.planes[0].offset as isize;
+            let offset = current_slice.planes[0].offset;
             if record.bits_per_raw_sample == 8 {
                 Self::decode_slice_content_rtc(
                     current_slice,
@@ -718,13 +718,14 @@ impl Decoder {
                     golomb_coder,
                     &mut frame.buf16,
                 );
-                rct8(
+                RCT::rct(
                     &mut frame.buf,
                     &frame.buf16,
-                    width as isize,
-                    height as isize,
-                    stride as isize,
+                    width,
+                    height,
+                    stride,
                     offset,
+                    record.bits_per_raw_sample as usize,
                 );
             } else if record.bits_per_raw_sample >= 9
                 && record.bits_per_raw_sample <= 15
@@ -738,11 +739,12 @@ impl Decoder {
                     &mut frame.buf16,
                 );
                 // See: 3.7.2. RGB
-                rct_mid(
+                RCT::rct(
                     &mut frame.buf16,
-                    width as isize,
-                    height as isize,
-                    stride as isize,
+                    &frame.buf,
+                    width,
+                    height,
+                    stride,
                     offset,
                     record.bits_per_raw_sample as usize,
                 );
@@ -754,13 +756,14 @@ impl Decoder {
                     golomb_coder,
                     &mut frame.buf32,
                 );
-                rct16(
+                RCT::rct(
                     &mut frame.buf16,
                     &frame.buf32,
-                    width as isize,
-                    height as isize,
-                    stride as isize,
+                    width,
+                    height,
+                    stride,
                     offset,
+                    record.bits_per_raw_sample as usize,
                 );
             }
         }
