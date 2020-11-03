@@ -589,7 +589,7 @@ impl Decoder {
     /// All planes are coded per line.
     ///
     /// See: 3.7.2. RGB
-    pub fn decode_slice_content_rtc<T>(
+    pub fn decode_slice_content_rct<T>(
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut RangeCoder,
@@ -711,7 +711,7 @@ impl Decoder {
             let height = current_slice.planes[0].height as usize;
             let offset = current_slice.planes[0].offset;
             if record.bits_per_raw_sample == 8 {
-                Self::decode_slice_content_rtc(
+                Self::decode_slice_content_rct(
                     current_slice,
                     record,
                     coder,
@@ -731,7 +731,7 @@ impl Decoder {
                 && record.bits_per_raw_sample <= 15
                 && !record.extra_plane
             {
-                Self::decode_slice_content_rtc(
+                Self::decode_slice_content_rct(
                     current_slice,
                     record,
                     coder,
@@ -749,7 +749,7 @@ impl Decoder {
                     record.bits_per_raw_sample as usize,
                 );
             } else {
-                Self::decode_slice_content_rtc(
+                Self::decode_slice_content_rct(
                     current_slice,
                     record,
                     coder,
