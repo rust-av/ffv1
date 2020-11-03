@@ -32,11 +32,11 @@
 ///      * 3.2. Samples
 pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
     plane: &[T],
-    x: isize,
-    y: isize,
-    width: isize,
-    _height: isize,
-    stride: isize,
+    x: usize,
+    y: usize,
+    width: usize,
+    _height: usize,
+    stride: usize,
 ) -> (isize, isize, isize, isize, isize, isize) {
     let mut T: isize = 0;
     let mut L: isize = 0;
@@ -45,8 +45,7 @@ pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
     let mut tr: isize = 0;
     let mut tl: isize = 0;
 
-    let stride = stride as usize;
-    let pos = y as usize * stride + x as usize;
+    let pos = y * stride + x;
 
     // This is really slow and stupid but matches the spec exactly.
     // Each of the neighbouring values has been left entirely separate,
@@ -87,7 +86,7 @@ pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
 
     // tr
     if y > 0 {
-        tr = plane[pos - stride + (width - 1 - x).min(1) as usize].as_();
+        tr = plane[pos - stride + (width - 1 - x).min(1)].as_();
     }
 
     (T, L, t, l, tr, tl)

@@ -388,11 +388,11 @@ impl Decoder {
         coder: &mut RangeCoder,
         golomb_coder: &mut Option<&mut Coder>,
         buf: &mut [T],
-        width: isize,
-        height: isize,
-        stride: isize,
-        offset: isize,
-        yy: isize,
+        width: usize,
+        height: usize,
+        stride: usize,
+        offset: usize,
+        yy: usize,
         qt: usize,
     ) where
         T: AsPrimitive<isize>,
@@ -413,23 +413,17 @@ impl Decoder {
         };
 
         let quant_table = &record.quant_tables
-            [current_slice.header.quant_table_set_index[qt as usize] as usize];
+            [current_slice.header.quant_table_set_index[qt] as usize];
 
         // 4.7.4. sample_difference
-        for x in 0..width as usize {
+        for x in 0..width {
             // Derive neighbours
             //
             // See pred.go for details.
             #[allow(non_snake_case)]
             #[allow(clippy::many_single_char_names)]
-            let (T, L, t, l, tr, tl) = derive_borders(
-                &buf[offset as usize..],
-                x as isize,
-                yy,
-                width,
-                height,
-                stride,
-            );
+            let (T, L, t, l, tr, tl) =
+                derive_borders(&buf[offset..], x, yy, width, height, stride);
 
             // See pred.go for details.
             //
@@ -446,14 +440,11 @@ impl Decoder {
             let mut diff = if let Some(ref mut golomb_coder) = golomb_coder {
                 golomb_coder.sg(
                     context,
-                    &mut current_slice.golomb_state[qt as usize]
-                        [context as usize],
+                    &mut current_slice.golomb_state[qt][context as usize],
                     shift as usize,
                 )
             } else {
-                coder
-                    .sr(&mut current_slice.state[qt as usize]
-                        [context as usize])
+                coder.sr(&mut current_slice.state[qt][context as usize])
             };
 
             // 3.4. Context
@@ -480,8 +471,7 @@ impl Decoder {
 
             val &= (1 << shift) - 1;
 
-            buf[offset as usize + (yy as usize * stride as usize) + x] =
-                val.as_();
+            buf[offset + (yy * stride) + x] = val.as_();
         }
     }
 
@@ -516,11 +506,11 @@ impl Decoder {
             ) = if p == 0 || p == 1 + chroma_planes {
                 let quant_table = if p == 0 { 0 } else { chroma_planes };
                 (
-                    current_slice.height as isize,
-                    current_slice.width as isize,
-                    record.width as isize,
-                    current_slice.start_x as isize,
-                    current_slice.start_y as isize,
+                    current_slice.height as usize,
+                    current_slice.width as usize,
+                    record.width as usize,
+                    current_slice.start_x as usize,
+                    current_slice.start_y as usize,
                     quant_table,
                 )
             } else {
@@ -528,19 +518,19 @@ impl Decoder {
                 (
                     (current_slice.height as f64
                         / (1 << record.log2_v_chroma_subsample) as f64)
-                        .ceil() as isize,
+                        .ceil() as usize,
                     (current_slice.width as f64
                         / (1 << record.log2_h_chroma_subsample) as f64)
-                        .ceil() as isize,
+                        .ceil() as usize,
                     (record.width as f64
                         / (1 << record.log2_h_chroma_subsample) as f64)
-                        .ceil() as isize,
+                        .ceil() as usize,
                     (current_slice.start_x as f64
                         / ((1 << record.log2_v_chroma_subsample) as f64))
-                        .ceil() as isize,
+                        .ceil() as usize,
                     (current_slice.start_y as f64
                         / ((1 << record.log2_h_chroma_subsample) as f64))
-                        .ceil() as isize,
+                        .ceil() as usize,
                     1,
                 )
             };
@@ -550,8 +540,9 @@ impl Decoder {
                 golomb_coder.new_plane(plane_pixel_width as u32);
             }
 
+            let offset = start_y * plane_pixel_stride + start_x;
+
             for y in 0..plane_pixel_height {
-                let offset = start_y * plane_pixel_stride + start_x;
                 Self::decode_line(
                     current_slice,
                     record,
@@ -589,8 +580,8 @@ impl Decoder {
         }
 
         let offset = (current_slice.start_y * record.width
-            + current_slice.start_x) as isize;
-        for y in 0..current_slice.height as isize {
+            + current_slice.start_x) as usize;
+        for y in 0..current_slice.height as usize {
             // RGB *must* have chroma planes, so this is safe.
             Self::decode_line(
                 current_slice,
@@ -598,9 +589,9 @@ impl Decoder {
                 coder,
                 golomb_coder,
                 &mut buf[0],
-                current_slice.width as isize,
-                current_slice.height as isize,
-                record.width as isize,
+                current_slice.width as usize,
+                current_slice.height as usize,
+                record.width as usize,
                 offset,
                 y,
                 0,
@@ -611,9 +602,9 @@ impl Decoder {
                 coder,
                 golomb_coder,
                 &mut buf[1],
-                current_slice.width as isize,
-                current_slice.height as isize,
-                record.width as isize,
+                current_slice.width as usize,
+                current_slice.height as usize,
+                record.width as usize,
                 offset,
                 y,
                 1,
@@ -624,9 +615,9 @@ impl Decoder {
                 coder,
                 golomb_coder,
                 &mut buf[2],
-                current_slice.width as isize,
-                current_slice.height as isize,
-                record.width as isize,
+                current_slice.width as usize,
+                current_slice.height as usize,
+                record.width as usize,
                 offset,
                 y,
                 1,
@@ -638,9 +629,9 @@ impl Decoder {
                     coder,
                     golomb_coder,
                     &mut buf[3],
-                    current_slice.width as isize,
-                    current_slice.height as isize,
-                    record.width as isize,
+                    current_slice.width as usize,
+                    current_slice.height as usize,
+                    record.width as usize,
                     offset,
                     y,
                     2,
