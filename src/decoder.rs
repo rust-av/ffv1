@@ -802,7 +802,7 @@ impl Decoder {
             // position.
             //
             // See: 3.8.1.1.1. Termination
-            coder.sentinal_end();
+            coder.sentinel_end();
             let offset = coder.get_pos() - 1;
             let coder =
                 GolombCoder::new(&buf[slice_info.pos + offset as usize..]);
