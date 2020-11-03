@@ -391,7 +391,6 @@ impl Decoder {
         width: usize,
         height: usize,
         stride: usize,
-        offset: usize,
         yy: usize,
         qt: usize,
     ) where
@@ -423,7 +422,7 @@ impl Decoder {
             #[allow(non_snake_case)]
             #[allow(clippy::many_single_char_names)]
             let (T, L, t, l, tr, tl) =
-                derive_borders(&buf[offset..], x, yy, width, height, stride);
+                derive_borders(buf, x, yy, width, height, stride);
 
             // See pred.go for details.
             //
@@ -471,7 +470,7 @@ impl Decoder {
 
             val &= (1 << shift) - 1;
 
-            buf[offset + (yy * stride) + x] = val.as_();
+            buf[(yy * stride) + x] = val.as_();
         }
     }
 
@@ -548,11 +547,10 @@ impl Decoder {
                     record,
                     coder,
                     golomb_coder,
-                    &mut buf[p],
+                    &mut buf[p][offset..],
                     plane_pixel_width,
                     plane_pixel_height,
                     plane_pixel_stride,
-                    offset,
                     y,
                     quant_table,
                 );
@@ -588,11 +586,10 @@ impl Decoder {
                 record,
                 coder,
                 golomb_coder,
-                &mut buf[0],
+                &mut buf[0][offset..],
                 current_slice.width as usize,
                 current_slice.height as usize,
                 record.width as usize,
-                offset,
                 y,
                 0,
             );
@@ -601,11 +598,10 @@ impl Decoder {
                 record,
                 coder,
                 golomb_coder,
-                &mut buf[1],
+                &mut buf[1][offset..],
                 current_slice.width as usize,
                 current_slice.height as usize,
                 record.width as usize,
-                offset,
                 y,
                 1,
             );
@@ -614,11 +610,10 @@ impl Decoder {
                 record,
                 coder,
                 golomb_coder,
-                &mut buf[2],
+                &mut buf[2][offset..],
                 current_slice.width as usize,
                 current_slice.height as usize,
                 record.width as usize,
-                offset,
                 y,
                 1,
             );
@@ -628,11 +623,10 @@ impl Decoder {
                     record,
                     coder,
                     golomb_coder,
-                    &mut buf[3],
+                    &mut buf[3][offset..],
                     current_slice.width as usize,
                     current_slice.height as usize,
                     record.width as usize,
-                    offset,
                     y,
                     2,
                 );
