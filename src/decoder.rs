@@ -14,7 +14,7 @@ use crate::slice::{
     count_slices, is_keyframe, InternalFrame, Slice, SliceHeader, SlicePlane,
 };
 
-pub enum Coder<'a> {
+enum Coder<'a> {
     Golomb(GolombCoder<'a>),
     Range(RangeCoder<'a>),
 }
@@ -273,7 +273,7 @@ impl Decoder {
     /// See: * 9.1.1. Multi-threading Support and Independence of Slices
     ///      * 3.8.1.3. Initial Values for the Context Model
     ///      * 3.8.2.4. Initial Values for the VLC context state
-    pub fn parse_footers(&mut self, buf: &[u8]) -> Result<()> {
+    fn parse_footers(&mut self, buf: &[u8]) -> Result<()> {
         let slice_info = count_slices(buf, self.record.ec != 0)?;
         self.current_frame.slice_info = slice_info;
 
@@ -307,7 +307,7 @@ impl Decoder {
     /// Parses a slice's header.
     ///
     /// See: 4.5. Slice Header
-    pub fn parse_slice_header(
+    fn parse_slice_header(
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut RangeCoder,
@@ -450,7 +450,7 @@ impl Decoder {
     ///
     /// See: 4.7. Line
     #[allow(clippy::too_many_arguments)]
-    pub fn decode_line<T>(
+    fn decode_line<T>(
         header: &SliceHeader,
         record: &ConfigRecord,
         coder: &mut Coder,
@@ -550,7 +550,7 @@ impl Decoder {
     ///
     /// See: 3.7.1. YCbCr
     #[allow(clippy::needless_range_loop)]
-    pub fn decode_slice_content_yuv<T>(
+    fn decode_slice_content_yuv<T>(
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut Coder,
@@ -593,7 +593,7 @@ impl Decoder {
     /// All planes are coded per line.
     ///
     /// See: 3.7.2. RGB
-    pub fn decode_slice_content_rct<T>(
+    fn decode_slice_content_rct<T>(
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut Coder,
@@ -640,7 +640,7 @@ impl Decoder {
     /// Decoding happens here.
     ///
     /// See: * 4.6. Slice Content
-    pub fn decode_slice_content(
+    fn decode_slice_content(
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut Coder,
@@ -724,10 +724,7 @@ impl Decoder {
     }
 
     /// Resets the range coder and Golomb-Rice coder states.
-    pub fn reset_slice_states(
-        current_slice: &mut Slice,
-        record: &ConfigRecord,
-    ) {
+    fn reset_slice_states(current_slice: &mut Slice, record: &ConfigRecord) {
         // Range coder states
         current_slice.state = record.initial_states.clone();
 
@@ -741,7 +738,7 @@ impl Decoder {
         }
     }
 
-    pub fn decode_slice(
+    fn decode_slice(
         &mut self,
         buf: &[u8],
         slicenum: usize,
