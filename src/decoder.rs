@@ -3,7 +3,8 @@ use num_traits::AsPrimitive;
 use crate::constants::CONTEXT_SIZE;
 use crate::crc32mpeg2::crc32_mpeg2;
 use crate::error::{Error, Result};
-use crate::golomb::{Coder, State};
+use crate::golomb::Coder as GolombCoder;
+use crate::golomb::State;
 use crate::jpeg2000rct::RCT;
 use crate::pred::{derive_borders, get_context, get_median};
 use crate::range::RangeCoder;
@@ -12,6 +13,11 @@ use crate::record::ConfigRecord;
 use crate::slice::{
     count_slices, is_keyframe, InternalFrame, Slice, SliceHeader, SlicePlane,
 };
+
+pub enum Coder<'a> {
+    Golomb(GolombCoder<'a>),
+    Range(RangeCoder<'a>),
+}
 
 /// Frame contains a decoded FFV1 frame and relevant
 /// data about the frame.
@@ -447,9 +453,8 @@ impl Decoder {
     pub fn decode_line<T>(
         header: &SliceHeader,
         record: &ConfigRecord,
-        coder: &mut RangeCoder,
+        coder: &mut Coder,
         state: &mut Vec<Vec<Vec<u8>>>,
-        golomb_coder: &mut Option<&mut Coder>,
         golomb_state: &mut Vec<Vec<State>>,
         buf: &mut [T],
         width: usize,
@@ -464,7 +469,7 @@ impl Decoder {
         // Runs are horizontal and thus cannot run more than a line.
         //
         // See: 3.8.2.2.1. Run Length Coding
-        if let Some(ref mut golomb_coder) = golomb_coder {
+        if let Coder::Golomb(ref mut golomb_coder) = coder {
             golomb_coder.new_line();
         }
 
@@ -500,14 +505,15 @@ impl Decoder {
                 false
             };
 
-            let mut diff = if let Some(ref mut golomb_coder) = golomb_coder {
-                golomb_coder.sg(
+            let mut diff = match coder {
+                Coder::Golomb(ref mut golomb_coder) => golomb_coder.sg(
                     context,
                     &mut golomb_state[qt][context as usize],
                     shift as usize,
-                )
-            } else {
-                coder.sr(&mut state[qt][context as usize])
+                ),
+                Coder::Range(ref mut range_coder) => {
+                    range_coder.sr(&mut state[qt][context as usize])
+                }
             };
 
             // 3.4. Context
@@ -519,7 +525,7 @@ impl Decoder {
             let mut val = diff;
             if record.colorspace_type == 0
                 && record.bits_per_raw_sample == 16
-                && golomb_coder.is_none()
+                && matches!(coder, Coder::Golomb(_))
             {
                 // 3.3. Median Predictor
                 let left16s = if l >= 32768 { l - 65536 } else { l };
@@ -547,8 +553,7 @@ impl Decoder {
     pub fn decode_slice_content_yuv<T>(
         current_slice: &mut Slice,
         record: &ConfigRecord,
-        coder: &mut RangeCoder,
-        golomb_coder: &mut Option<&mut Coder>,
+        coder: &mut Coder,
         buf: &mut Vec<Vec<T>>,
     ) where
         T: AsPrimitive<isize>,
@@ -561,7 +566,7 @@ impl Decoder {
 
         for (plane, buf) in planes.iter().zip(buf.iter_mut()) {
             // 3.8.2.2.1. Run Length Coding
-            if let Some(ref mut golomb_coder) = golomb_coder {
+            if let Coder::Golomb(ref mut golomb_coder) = coder {
                 golomb_coder.new_plane(plane.width as u32);
             }
 
@@ -571,7 +576,6 @@ impl Decoder {
                     record,
                     coder,
                     state,
-                    golomb_coder,
                     golomb_state,
                     &mut buf[plane.offset..],
                     plane.width as usize,
@@ -592,8 +596,7 @@ impl Decoder {
     pub fn decode_slice_content_rct<T>(
         current_slice: &mut Slice,
         record: &ConfigRecord,
-        coder: &mut RangeCoder,
-        golomb_coder: &mut Option<&mut Coder>,
+        coder: &mut Coder,
         buf: &mut Vec<Vec<T>>,
     ) where
         T: AsPrimitive<isize>,
@@ -611,7 +614,7 @@ impl Decoder {
         let state = &mut current_slice.state;
         let golomb_state = &mut current_slice.golomb_state;
 
-        if let Some(ref mut golomb_coder) = golomb_coder {
+        if let Coder::Golomb(ref mut golomb_coder) = coder {
             golomb_coder.new_plane(width as u32);
         }
 
@@ -622,7 +625,6 @@ impl Decoder {
                     record,
                     coder,
                     state,
-                    golomb_coder,
                     golomb_state,
                     &mut buf[offset..],
                     width,
@@ -641,8 +643,7 @@ impl Decoder {
     pub fn decode_slice_content(
         current_slice: &mut Slice,
         record: &ConfigRecord,
-        coder: &mut RangeCoder,
-        golomb_coder: &mut Option<&mut Coder>,
+        coder: &mut Coder,
         frame: &mut Frame,
     ) {
         if record.colorspace_type != 1 {
@@ -651,7 +652,6 @@ impl Decoder {
                     current_slice,
                     record,
                     coder,
-                    golomb_coder,
                     &mut frame.buf,
                 );
             } else if record.bits_per_raw_sample == 16 {
@@ -659,7 +659,6 @@ impl Decoder {
                     current_slice,
                     record,
                     coder,
-                    golomb_coder,
                     &mut frame.buf16,
                 );
             }
@@ -673,7 +672,6 @@ impl Decoder {
                     current_slice,
                     record,
                     coder,
-                    golomb_coder,
                     &mut frame.buf16,
                 );
                 RCT::rct(
@@ -693,7 +691,6 @@ impl Decoder {
                     current_slice,
                     record,
                     coder,
-                    golomb_coder,
                     &mut frame.buf16,
                 );
                 // See: 3.7.2. RGB
@@ -711,7 +708,6 @@ impl Decoder {
                     current_slice,
                     record,
                     coder,
-                    golomb_coder,
                     &mut frame.buf32,
                 );
                 RCT::rct(
@@ -801,27 +797,21 @@ impl Decoder {
 
         Self::parse_slice_header(current_slice, record, &mut coder);
 
-        let mut golomb_coder = if record.coder_type == 0 {
+        let mut coder = if record.coder_type == 0 {
             // We're switching to Golomb-Rice mode now so we need the bitstream
             // position.
             //
             // See: 3.8.1.1.1. Termination
             coder.sentinal_end();
             let offset = coder.get_pos() - 1;
-            Some(Coder::new(&buf[slice_info.pos + offset as usize..]))
+            let coder =
+                GolombCoder::new(&buf[slice_info.pos + offset as usize..]);
+            Coder::Golomb(coder)
         } else {
-            None
+            Coder::Range(coder)
         };
 
-        // Don't worry, I fully understand how non-idiomatic and
-        // ugly passing both c and gc is.
-        Self::decode_slice_content(
-            current_slice,
-            record,
-            &mut coder,
-            &mut golomb_coder.as_mut(),
-            frame,
-        );
+        Self::decode_slice_content(current_slice, record, &mut coder, frame);
 
         Ok(())
     }
