@@ -14,6 +14,7 @@ use crate::slice::{
     count_slices, is_keyframe, InternalFrame, Slice, SliceHeader, SlicePlane,
 };
 
+#[allow(clippy::large_enum_variant)]
 enum Coder<'a> {
     Golomb(GolombCoder<'a>),
     Range(RangeCoder<'a>),
@@ -434,7 +435,7 @@ impl Decoder {
             };
 
             current_slice.planes.push(chroma_plane.clone());
-            current_slice.planes.push(chroma_plane.clone());
+            current_slice.planes.push(chroma_plane);
         }
     }
 
