@@ -5,7 +5,6 @@
 //! https://tools.ietf.org/id/draft-ietf-cellar-ffv1-17
 
 use crate::rangecoder::tables::DEFAULT_STATE_TRANSITION;
-use crate::rangecoder::util::min32;
 
 /// RangeCoder is an instance of a range coder, as defined in:
 ///     Martin, G. Nigel N., "Range encoding: an algorithm for
@@ -114,7 +113,7 @@ impl<'a> RangeCoder<'a> {
         }
 
         let mut e: i32 = 0;
-        while self.get(&mut state[1 + min32(e, 9) as usize]) {
+        while self.get(&mut state[1 + e.min(9) as usize]) {
             e += 1;
             if e > 31 {
                 panic!("WTF range coder!");
@@ -124,12 +123,12 @@ impl<'a> RangeCoder<'a> {
         let mut a: u32 = 1;
         for i in (0..e).rev() {
             a *= 2;
-            if self.get(&mut state[22 + min32(i, 9) as usize]) {
+            if self.get(&mut state[22 + i.min(9) as usize]) {
                 a += 1;
             }
         }
 
-        if signed && self.get(&mut state[11 + min32(e, 10) as usize]) {
+        if signed && self.get(&mut state[11 + e.min(10) as usize]) {
             -(a as i32)
         } else {
             a as i32

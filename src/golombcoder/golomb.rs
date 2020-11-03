@@ -3,7 +3,6 @@
 
 use crate::golombcoder::bitreader::BitReader;
 use crate::golombcoder::tables::LOG2_RUN;
-use crate::golombcoder::util::*;
 
 /// Coder is an instance of a Golomb-Rice coder
 /// as described in 3.8.2. Golomb Rice Mode.
@@ -165,7 +164,7 @@ impl<'a> Coder<'a> {
 
         let ret = sign_extend(v + state.bias, bits);
 
-        state.error_sum += abs32(v);
+        state.error_sum += v.abs();
         state.drift += v;
 
         if state.count == 128 {
@@ -175,11 +174,11 @@ impl<'a> Coder<'a> {
         }
         state.count += 1;
         if state.drift <= -state.count {
-            state.bias = max32(state.bias - 1, -128);
-            state.drift = max32(state.drift + state.count, -state.count + 1);
+            state.bias = (state.bias - 1).max(-128);
+            state.drift = (state.drift + state.count).max(-state.count + 1);
         } else if state.drift > 0 {
-            state.bias = min32(state.bias + 1, 127);
-            state.drift = min32(state.drift - state.count, 0);
+            state.bias = (state.bias + 1).min(127);
+            state.drift = (state.drift - state.count).min(0);
         }
 
         ret
