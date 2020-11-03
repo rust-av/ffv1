@@ -150,8 +150,8 @@ impl<'a> RangeCoder<'a> {
     /// Ends the current range coder.
     ///
     /// See: 3.8.1.1.1. Termination
-    ///        * Sentinal Mode
-    pub fn sentinal_end(&mut self) {
+    ///        * Sentinel Mode
+    pub fn sentinel_end(&mut self) {
         let mut state: u8 = 129;
         self.get(&mut state);
     }
