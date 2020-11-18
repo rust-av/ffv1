@@ -11,7 +11,7 @@ use crate::rangecoder::tables::DEFAULT_STATE_TRANSITION;
 ///     removing redundancy from a digitised message.", July 1979.
 pub struct RangeCoder<'a> {
     buf: &'a [u8],
-    pos: isize,
+    pos: usize,
     low: u16,
     rng: u16,
     #[allow(dead_code)]
@@ -26,7 +26,7 @@ impl<'a> RangeCoder<'a> {
     /// See: 3.8.1. Range Coding Mode
     pub fn new(buf: &'a [u8]) -> Self {
         // Figure 15.
-        let mut pos: isize = 2;
+        let mut pos = 2;
         // Figure 14.
         let mut low = (buf[0] as u16) << 8 | buf[1] as u16;
         // Figure 13.
@@ -34,7 +34,7 @@ impl<'a> RangeCoder<'a> {
 
         if low >= rng {
             low = rng;
-            pos = buf.len() as isize - 1;
+            pos = buf.len() - 1;
         }
 
         let mut coder = Self {
@@ -58,8 +58,8 @@ impl<'a> RangeCoder<'a> {
         if self.rng < 0x100 {
             self.rng <<= 8;
             self.low <<= 8;
-            if self.pos < self.buf.len() as isize {
-                self.low += self.buf[self.pos as usize] as u16;
+            if self.pos < self.buf.len() {
+                self.low += self.buf[self.pos] as u16;
                 self.pos += 1;
             }
         }
@@ -112,23 +112,23 @@ impl<'a> RangeCoder<'a> {
             return 0;
         }
 
-        let mut e: i32 = 0;
-        while self.get(&mut state[1 + e.min(9) as usize]) {
+        let mut e = 0;
+        while self.get(&mut state[1 + e.min(9)]) {
             e += 1;
             if e > 31 {
                 panic!("WTF range coder!");
             }
         }
 
-        let mut a: u32 = 1;
+        let mut a = 1;
         for i in (0..e).rev() {
             a *= 2;
-            if self.get(&mut state[22 + i.min(9) as usize]) {
+            if self.get(&mut state[22 + i.min(9)]) {
                 a += 1;
             }
         }
 
-        if signed && self.get(&mut state[11 + e.min(10) as usize]) {
+        if signed && self.get(&mut state[11 + e.min(10)]) {
             -(a as i32)
         } else {
             a as i32
@@ -157,7 +157,7 @@ impl<'a> RangeCoder<'a> {
     }
 
     /// Gets the current position in the bitstream.
-    pub fn get_pos(&self) -> isize {
+    pub fn get_pos(&self) -> usize {
         if self.rng < 0x100 {
             return self.pos - 1;
         }
