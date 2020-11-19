@@ -8,9 +8,9 @@ use crate::golombcoder::tables::LOG2_RUN;
 /// as described in 3.8.2. Golomb Rice Mode.
 pub struct Coder<'a> {
     r: BitReader<'a>,
-    run_mode: isize,
+    run_mode: usize,
     run_count: isize,
-    run_index: isize,
+    run_index: usize,
     x: u32,
     w: u32,
 }
@@ -39,7 +39,7 @@ impl Default for State {
 }
 
 /// Simple sign extension.
-pub fn sign_extend(n: i32, bits: usize) -> i32 {
+pub fn sign_extend(n: i32, bits: u32) -> i32 {
     if bits == 8 {
         let ret = n as i8;
         ret as i32
@@ -91,7 +91,7 @@ impl<'a> Coder<'a> {
     ///
     /// See: * 3.8.2. Golomb Rice Mode
     ///      * 4. Bitstream
-    pub fn sg(&mut self, context: i32, state: &mut State, bits: usize) -> i32 {
+    pub fn sg(&mut self, context: i32, state: &mut State, bits: u32) -> i32 {
         // Section 3.8.2.2. Run Mode
         if context == 0 && self.run_mode == 0 {
             self.run_mode = 1;
@@ -108,8 +108,7 @@ impl<'a> Coder<'a> {
                 } else {
                     if LOG2_RUN[self.run_index as usize] != 0 {
                         self.run_count =
-                            self.r.u(LOG2_RUN[self.run_index as usize] as u32)
-                                as isize;
+                            self.r.u(LOG2_RUN[self.run_index] as u32) as isize;
                     } else {
                         self.run_count = 0;
                     }
@@ -147,16 +146,16 @@ impl<'a> Coder<'a> {
     /// Gets the next Golomb-Rice coded symbol.
     ///
     /// See: 3.8.2.3. Scalar Mode
-    pub fn get_vlc_symbol(&mut self, state: &mut State, bits: usize) -> i32 {
+    pub fn get_vlc_symbol(&mut self, state: &mut State, bits: u32) -> i32 {
         let mut i = state.count;
-        let mut k = 0 as u32;
+        let mut k = 0;
 
         while i < state.error_sum {
             k += 1;
             i += i;
         }
 
-        let mut v = self.get_sr_golomb(k, bits);
+        let mut v = self.get_sr_golomb(k, bits) as i32;
 
         if 2 * state.drift < -state.count {
             v = -1 - v;
@@ -187,8 +186,8 @@ impl<'a> Coder<'a> {
     /// Gets the next signed Golomb-Rice code
     ///
     /// See: 3.8.2.1. Signed Golomb Rice Codes
-    pub fn get_sr_golomb(&mut self, k: u32, bits: usize) -> i32 {
-        let v = self.get_ur_golomb(k, bits);
+    pub fn get_sr_golomb(&mut self, k: u32, bits: u32) -> i32 {
+        let v = self.get_ur_golomb(k, bits) as i32;
         if v & 1 == 1 {
             -(v >> 1) - 1
         } else {
@@ -199,12 +198,12 @@ impl<'a> Coder<'a> {
     /// Gets the next unsigned Golomb-Rice code
     ///
     /// See: 3.8.2.1. Signed Golomb Rice Codes
-    pub fn get_ur_golomb(&mut self, k: u32, bits: usize) -> i32 {
+    pub fn get_ur_golomb(&mut self, k: u32, bits: u32) -> u32 {
         for prefix in 0..12 {
             if self.r.u(1) == 1 {
-                return self.r.u(k) as i32 + (prefix << k) as i32;
+                return self.r.u(k) + (prefix << k);
             }
         }
-        self.r.u(bits as u32) as i32 + 11
+        self.r.u(bits) + 11
     }
 }

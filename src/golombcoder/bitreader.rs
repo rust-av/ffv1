@@ -1,6 +1,6 @@
 pub struct BitReader<'a> {
     buf: &'a [u8],
-    pos: isize,
+    pos: usize,
     bit_buf: u32,
     bits_in_buf: u32,
 }
@@ -23,7 +23,7 @@ impl<'a> BitReader<'a> {
         }
         while count > self.bits_in_buf {
             self.bit_buf <<= 8;
-            self.bit_buf |= self.buf[self.pos as usize] as u32;
+            self.bit_buf |= self.buf[self.pos] as u32;
             self.bits_in_buf += 8;
             self.pos += 1;
 

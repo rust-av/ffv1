@@ -16,10 +16,9 @@ pub struct ConfigRecord {
     pub extra_plane: bool,
     pub num_h_slices_minus1: u8,
     pub num_v_slices_minus1: u8,
-    pub quant_table_set_count: u8,
-    pub context_count: [i32; MAX_QUANT_TABLES as usize],
-    pub quant_tables:
-        [[[i16; 256]; MAX_CONTEXT_INPUTS as usize]; MAX_QUANT_TABLES as usize],
+    pub quant_table_set_count: usize,
+    pub context_count: [i32; MAX_QUANT_TABLES],
+    pub quant_tables: [[[i16; 256]; MAX_CONTEXT_INPUTS]; MAX_QUANT_TABLES],
     pub states_coded: bool,
     pub initial_state_delta: Vec<Vec<Vec<i16>>>, // FIXME: This is horrible
     pub initial_states: Vec<Vec<Vec<u8>>>,
@@ -50,16 +49,13 @@ impl ConfigRecord {
         }
         let mut coder = RangeCoder::new(buf);
         let mut state_transition_delta: [i16; 256] = [0; 256];
-        let mut context_count: [i32; MAX_QUANT_TABLES as usize] =
-            [0; MAX_QUANT_TABLES as usize];
-        let mut quant_tables: [[[i16; 256]; MAX_CONTEXT_INPUTS as usize];
-            MAX_QUANT_TABLES as usize] = [[[0; 256];
-            MAX_CONTEXT_INPUTS as usize];
-            MAX_QUANT_TABLES as usize];
+        let mut context_count: [i32; MAX_QUANT_TABLES] = [0; MAX_QUANT_TABLES];
+        let mut quant_tables: [[[i16; 256]; MAX_CONTEXT_INPUTS];
+            MAX_QUANT_TABLES] =
+            [[[0; 256]; MAX_CONTEXT_INPUTS]; MAX_QUANT_TABLES];
 
         // 4. Bitstream
-        let mut state: [u8; CONTEXT_SIZE as usize] =
-            [128; CONTEXT_SIZE as usize];
+        let mut state: [u8; CONTEXT_SIZE] = [128; CONTEXT_SIZE];
 
         // 4.1.1. version
         let version = coder.ur(&mut state) as u8;
@@ -147,7 +143,7 @@ impl ConfigRecord {
         let num_v_slices_minus1 = coder.ur(&mut state) as u8;
 
         // 4.1.13. quant_table_set_count
-        let quant_table_set_count = coder.ur(&mut state) as u8;
+        let quant_table_set_count = coder.ur(&mut state) as usize;
         if quant_table_set_count == 0 {
             return Err(Error::InvalidConfiguration(
                 "quant_table_set_count may not be zero".to_owned(),
@@ -159,13 +155,12 @@ impl ConfigRecord {
             )));
         }
 
-        for i in 0..quant_table_set_count as usize {
+        for i in 0..quant_table_set_count {
             // 4.9.  Quantization Table Set
             let mut scale = 1;
-            for j in 0..MAX_CONTEXT_INPUTS as usize {
+            for j in 0..MAX_CONTEXT_INPUTS {
                 // Each table has its own state table.
-                let mut quant_state: [u8; CONTEXT_SIZE as usize] =
-                    [128; CONTEXT_SIZE as usize];
+                let mut quant_state: [u8; CONTEXT_SIZE] = [128; CONTEXT_SIZE];
                 let mut v = 0;
                 let mut k = 0;
                 while k < 128 {
@@ -188,8 +183,8 @@ impl ConfigRecord {
         // Why on earth did they choose to do a variable length buffer in the
         // *middle and start* of a 3D array?
         let mut initial_state_delta: Vec<Vec<Vec<i16>>> =
-            vec![Vec::new(); quant_table_set_count as usize];
-        for i in 0..quant_table_set_count as usize {
+            vec![Vec::new(); quant_table_set_count];
+        for i in 0..quant_table_set_count {
             initial_state_delta[i] =
                 vec![Vec::new(); context_count[i] as usize];
             for j in 0..context_count[i] as usize {
@@ -198,7 +193,7 @@ impl ConfigRecord {
             let states_coded = coder.br(&mut state);
             if states_coded {
                 for j in 0..context_count[i] as usize {
-                    for k in 0..CONTEXT_SIZE as usize {
+                    for k in 0..CONTEXT_SIZE {
                         initial_state_delta[i][j][k] =
                             coder.sr(&mut state) as i16;
                     }

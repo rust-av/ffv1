@@ -161,23 +161,23 @@ impl Decoder {
             num_planes += 1;
         }
 
-        let full_size = self.record.width * self.record.height;
+        let full_size = (self.record.width * self.record.height) as usize;
         let chroma_width =
             self.record.width >> self.record.log2_h_chroma_subsample;
         let chroma_height =
             self.record.height >> self.record.log2_v_chroma_subsample;
-        let chroma_size = chroma_width * chroma_height;
+        let chroma_size = (chroma_width * chroma_height) as usize;
 
         // Hideous and temporary.
         if self.record.bits_per_raw_sample == 8 {
             frame.buf = vec![Vec::new(); num_planes];
-            frame.buf[0] = vec![0; full_size as usize];
+            frame.buf[0] = vec![0; full_size];
             if self.record.chroma_planes {
-                frame.buf[1] = vec![0; chroma_size as usize];
-                frame.buf[2] = vec![0; chroma_size as usize];
+                frame.buf[1] = vec![0; chroma_size];
+                frame.buf[2] = vec![0; chroma_size];
             }
             if self.record.extra_plane {
-                frame.buf[3] = vec![0; full_size as usize];
+                frame.buf[3] = vec![0; full_size];
             }
         }
 
@@ -189,13 +189,13 @@ impl Decoder {
             || self.record.colorspace_type == 1
         {
             frame.buf16 = vec![Vec::new(); num_planes];
-            frame.buf16[0] = vec![0; full_size as usize];
+            frame.buf16[0] = vec![0; full_size];
             if self.record.chroma_planes {
-                frame.buf16[1] = vec![0; chroma_size as usize];
-                frame.buf16[2] = vec![0; chroma_size as usize];
+                frame.buf16[1] = vec![0; chroma_size];
+                frame.buf16[2] = vec![0; chroma_size];
             }
             if self.record.extra_plane {
-                frame.buf16[3] = vec![0; full_size as usize];
+                frame.buf16[3] = vec![0; full_size];
             }
         }
 
@@ -206,11 +206,11 @@ impl Decoder {
             && self.record.colorspace_type == 1
         {
             frame.buf32 = vec![Vec::new(); num_planes];
-            frame.buf32[0] = vec![0; full_size as usize];
-            frame.buf32[1] = vec![0; full_size as usize];
-            frame.buf32[2] = vec![0; full_size as usize];
+            frame.buf32[0] = vec![0; full_size];
+            frame.buf32[1] = vec![0; full_size];
+            frame.buf32[2] = vec![0; full_size];
             if self.record.extra_plane {
-                frame.buf32[3] = vec![0; full_size as usize];
+                frame.buf32[3] = vec![0; full_size];
             }
         }
 
@@ -314,8 +314,7 @@ impl Decoder {
         coder: &mut RangeCoder,
     ) {
         // 4. Bitstream
-        let mut slice_state: [u8; CONTEXT_SIZE as usize] =
-            [128; CONTEXT_SIZE as usize];
+        let mut slice_state: [u8; CONTEXT_SIZE] = [128; CONTEXT_SIZE];
 
         // 4.5.1. slice_x
         current_slice.header.slice_x = coder.ur(&mut slice_state);
@@ -337,7 +336,7 @@ impl Decoder {
 
         // 4.5.6. quant_table_set_index
         current_slice.header.quant_table_set_index =
-            vec![0; quant_table_set_index_count as usize];
+            vec![0; quant_table_set_index_count];
         for i in 0..quant_table_set_index_count {
             current_slice.header.quant_table_set_index[i] =
                 coder.ur(&mut slice_state) as u8;
@@ -379,7 +378,7 @@ impl Decoder {
             - start_y;
 
         let stride = record.width;
-        let offset = start_x as usize + start_y as usize * stride as usize;
+        let offset = start_x + start_y * stride;
 
         // Calculate the plane boundaries
         //
@@ -391,7 +390,7 @@ impl Decoder {
             width,
             height,
             stride,
-            offset,
+            offset: offset as usize,
             quant: 0,
         };
 
@@ -423,14 +422,14 @@ impl Decoder {
             let stride = (record.width as f64
                 / (1 << record.log2_h_chroma_subsample) as f64)
                 .ceil() as u32;
-            let offset = start_x as usize + start_y as usize * stride as usize;
+            let offset = start_x + start_y * stride;
             let chroma_plane = SlicePlane {
                 start_x,
                 start_y,
                 width,
                 height,
                 stride,
-                offset,
+                offset: offset as usize,
                 quant: 1,
             };
 
@@ -464,8 +463,8 @@ impl Decoder {
         yy: usize,
         qt: usize,
     ) where
-        T: AsPrimitive<isize>,
-        i32: AsPrimitive<T>,
+        T: AsPrimitive<usize>,
+        u32: AsPrimitive<T>,
     {
         // Runs are horizontal and thus cannot run more than a line.
         //
@@ -510,7 +509,7 @@ impl Decoder {
                 Coder::Golomb(ref mut golomb_coder) => golomb_coder.sg(
                     context,
                     &mut golomb_state[qt][context as usize],
-                    shift as usize,
+                    shift as u32,
                 ),
                 Coder::Range(ref mut range_coder) => {
                     range_coder.sr(&mut state[qt][context as usize])
@@ -523,7 +522,7 @@ impl Decoder {
             }
 
             // 3.8. Coding of the Sample Difference
-            let mut val = diff;
+            let mut val: i32 = diff;
             if record.colorspace_type == 0
                 && record.bits_per_raw_sample == 16
                 && matches!(coder, Coder::Golomb(_))
@@ -533,15 +532,20 @@ impl Decoder {
                 let top16s = if t >= 32768 { t - 65536 } else { t };
                 let diag16s = if tl >= 32768 { tl - 65536 } else { tl };
 
-                val += get_median(left16s, top16s, left16s + top16s - diag16s)
-                    as i32;
+                val += get_median(
+                    left16s as i32,
+                    top16s as i32,
+                    (left16s + top16s - diag16s) as i32,
+                );
             } else {
-                val += get_median(l, t, l + t - tl) as i32;
+                val += get_median(l as i32, t as i32, (l + t - tl) as i32);
             }
 
             val &= (1 << shift) - 1;
 
-            buf[(yy * stride) + x] = val.as_();
+            let val1 = val as u32;
+
+            buf[(yy * stride) + x] = val1.as_();
         }
     }
 
@@ -557,8 +561,8 @@ impl Decoder {
         coder: &mut Coder,
         buf: &mut Vec<Vec<T>>,
     ) where
-        T: AsPrimitive<isize>,
-        i32: AsPrimitive<T>,
+        T: AsPrimitive<usize>,
+        u32: AsPrimitive<T>,
     {
         let planes = &current_slice.planes;
         let header = &current_slice.header;
@@ -583,7 +587,7 @@ impl Decoder {
                     plane.height as usize,
                     plane.stride as usize,
                     y,
-                    plane.quant as usize,
+                    plane.quant.into(),
                 );
             }
         }
@@ -600,8 +604,8 @@ impl Decoder {
         coder: &mut Coder,
         buf: &mut Vec<Vec<T>>,
     ) where
-        T: AsPrimitive<isize>,
-        i32: AsPrimitive<T>,
+        T: AsPrimitive<usize>,
+        u32: AsPrimitive<T>,
     {
         let planes = &current_slice.planes;
         // All the planes have the same dimension
@@ -632,7 +636,7 @@ impl Decoder {
                     height,
                     stride,
                     y,
-                    plane.quant as usize,
+                    plane.quant.into(),
                 );
             }
         }
@@ -682,7 +686,7 @@ impl Decoder {
                     height,
                     stride,
                     offset,
-                    record.bits_per_raw_sample as usize,
+                    record.bits_per_raw_sample.into(),
                 );
             } else if record.bits_per_raw_sample >= 9
                 && record.bits_per_raw_sample <= 15
@@ -702,7 +706,7 @@ impl Decoder {
                     height,
                     stride,
                     offset,
-                    record.bits_per_raw_sample as usize,
+                    record.bits_per_raw_sample.into(),
                 );
             } else {
                 Self::decode_slice_content_rct(
@@ -718,7 +722,7 @@ impl Decoder {
                     height,
                     stride,
                     offset,
-                    record.bits_per_raw_sample as usize,
+                    record.bits_per_raw_sample.into(),
                 );
             }
         }
@@ -731,7 +735,7 @@ impl Decoder {
 
         // Golomb-Rice Code states
         if record.coder_type == 0 {
-            let count = record.quant_table_set_count as usize;
+            let count = record.quant_table_set_count;
             current_slice.golomb_state = record.context_count[..count]
                 .iter()
                 .map(|&len| vec![Default::default(); len as usize])
@@ -780,8 +784,7 @@ impl Decoder {
         let mut coder = RangeCoder::new(&buf[slice_info.pos..]);
 
         // 4. Bitstream
-        let mut state: [u8; CONTEXT_SIZE as usize] =
-            [128; CONTEXT_SIZE as usize];
+        let mut state: [u8; CONTEXT_SIZE] = [128; CONTEXT_SIZE];
 
         // Skip keyframe bit on slice 0
         if slicenum == 0 {
@@ -802,8 +805,7 @@ impl Decoder {
             // See: 3.8.1.1.1. Termination
             coder.sentinel_end();
             let offset = coder.get_pos() - 1;
-            let coder =
-                GolombCoder::new(&buf[slice_info.pos + offset as usize..]);
+            let coder = GolombCoder::new(&buf[slice_info.pos + offset..]);
             Coder::Golomb(coder)
         } else {
             Coder::Range(coder)

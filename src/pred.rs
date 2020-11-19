@@ -30,21 +30,14 @@
 ///
 /// See: * 3.1. Border
 ///      * 3.2. Samples
-pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
+pub fn derive_borders<T: num_traits::AsPrimitive<usize>>(
     plane: &[T],
     x: usize,
     y: usize,
     width: usize,
     _height: usize,
     stride: usize,
-) -> (isize, isize, isize, isize, isize, isize) {
-    let mut T: isize = 0;
-    let mut L: isize = 0;
-    let mut t: isize = 0;
-    let mut l: isize = 0;
-    let mut tr: isize = 0;
-    let mut tl: isize = 0;
-
+) -> (usize, usize, usize, usize, usize, usize) {
     let pos = y * stride + x;
 
     // This is really slow and stupid but matches the spec exactly.
@@ -54,40 +47,48 @@ pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
     // Please never implement an actual decoder this way.
 
     // T
-    if y > 1 {
-        T = plane[pos - (2 * stride)].as_();
-    }
+    let T = if y > 1 {
+        plane[pos - (2 * stride)].as_()
+    } else {
+        0
+    };
 
     // L
-    if y > 0 && x == 1 {
-        L = plane[pos - stride - 1].as_();
+    let L = if y > 0 && x == 1 {
+        plane[pos - stride - 1].as_()
     } else if x > 1 {
-        L = plane[pos - 2].as_();
-    }
+        plane[pos - 2].as_()
+    } else {
+        0
+    };
 
     // t
-    if y > 0 {
-        t = plane[pos - stride].as_();
-    }
+    let t = if y > 0 { plane[pos - stride].as_() } else { 0 };
 
     // l
-    if x > 0 {
-        l = plane[pos - 1].as_();
+    let l = if x > 0 {
+        plane[pos - 1].as_()
     } else if y > 0 {
-        l = plane[pos - stride].as_();
-    }
+        plane[pos - stride].as_()
+    } else {
+        0
+    };
 
     // tl
-    if y > 1 && x == 0 {
-        tl = plane[pos - (2 * stride)].as_();
+    let tl = if y > 1 && x == 0 {
+        plane[pos - (2 * stride)].as_()
     } else if y > 0 && x > 0 {
-        tl = plane[pos - stride - 1].as_();
-    }
+        plane[pos - stride - 1].as_()
+    } else {
+        0
+    };
 
     // tr
-    if y > 0 {
-        tr = plane[pos - stride + (width - 1 - x).min(1)].as_();
-    }
+    let tr = if y > 0 {
+        plane[pos - stride + (width - 1 - x).min(1)].as_()
+    } else {
+        0
+    };
 
     (T, L, t, l, tr, tl)
 }
@@ -98,23 +99,23 @@ pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
 ///      * 3.5. Quantization Table Sets
 pub fn get_context(
     quant_tables: &[[i16; 256]; 5],
-    T: isize,
-    L: isize,
-    t: isize,
-    l: isize,
-    tr: isize,
-    tl: isize,
+    T: usize,
+    L: usize,
+    t: usize,
+    l: usize,
+    tr: usize,
+    tl: usize,
 ) -> i32 {
-    quant_tables[0][(l - tl) as usize & 255] as i32
-        + quant_tables[1][(tl - t) as usize & 255] as i32
-        + quant_tables[2][(t - tr) as usize & 255] as i32
-        + quant_tables[3][(L - l) as usize & 255] as i32
-        + quant_tables[4][(T - t) as usize & 255] as i32
+    quant_tables[0][(l - tl) & 255] as i32
+        + quant_tables[1][(tl - t) & 255] as i32
+        + quant_tables[2][(t - tr) & 255] as i32
+        + quant_tables[3][(L - l) & 255] as i32
+        + quant_tables[4][(T - t) & 255] as i32
 }
 
 /// Calculate the median value of 3 numbers
 ///
 /// See: 2.2.5. Mathematical Functions
-pub fn get_median(a: isize, b: isize, c: isize) -> isize {
+pub fn get_median(a: i32, b: i32, c: i32) -> i32 {
     a + b + c - a.min(b.min(c)) - a.max(b.max(c))
 }
