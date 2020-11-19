@@ -463,8 +463,8 @@ impl Decoder {
         yy: usize,
         qt: usize,
     ) where
-        T: AsPrimitive<isize>,
-        i32: AsPrimitive<T>,
+        T: AsPrimitive<usize>,
+        u32: AsPrimitive<T>,
     {
         // Runs are horizontal and thus cannot run more than a line.
         //
@@ -497,15 +497,7 @@ impl Decoder {
             //
             // See also: * 3.4. Context
             //           * 3.6. Quantization Table Set Indexes
-            let mut context = get_context(
-                quant_table,
-                T as usize,
-                L as usize,
-                t as usize,
-                l as usize,
-                tr as usize,
-                tl as usize,
-            );
+            let mut context = get_context(quant_table, T, L, t, l, tr, tl);
             let sign = if context < 0 {
                 context = -context;
                 true
@@ -540,15 +532,20 @@ impl Decoder {
                 let top16s = if t >= 32768 { t - 65536 } else { t };
                 let diag16s = if tl >= 32768 { tl - 65536 } else { tl };
 
-                val += get_median(left16s, top16s, left16s + top16s - diag16s)
-                    as i32;
+                val += get_median(
+                    left16s as i32,
+                    top16s as i32,
+                    (left16s + top16s - diag16s) as i32,
+                );
             } else {
-                val += get_median(l, t, l + t - tl) as i32;
+                val += get_median(l as i32, t as i32, (l + t - tl) as i32);
             }
 
             val &= (1 << shift) - 1;
 
-            buf[(yy * stride) + x] = val.as_();
+            let val1 = val as u32;
+
+            buf[(yy * stride) + x] = val1.as_();
         }
     }
 
@@ -564,8 +561,8 @@ impl Decoder {
         coder: &mut Coder,
         buf: &mut Vec<Vec<T>>,
     ) where
-        T: AsPrimitive<isize>,
-        i32: AsPrimitive<T>,
+        T: AsPrimitive<usize>,
+        u32: AsPrimitive<T>,
     {
         let planes = &current_slice.planes;
         let header = &current_slice.header;
@@ -607,8 +604,8 @@ impl Decoder {
         coder: &mut Coder,
         buf: &mut Vec<Vec<T>>,
     ) where
-        T: AsPrimitive<isize>,
-        i32: AsPrimitive<T>,
+        T: AsPrimitive<usize>,
+        u32: AsPrimitive<T>,
     {
         let planes = &current_slice.planes;
         // All the planes have the same dimension

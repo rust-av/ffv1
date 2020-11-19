@@ -30,14 +30,14 @@
 ///
 /// See: * 3.1. Border
 ///      * 3.2. Samples
-pub fn derive_borders<T: num_traits::AsPrimitive<isize>>(
+pub fn derive_borders<T: num_traits::AsPrimitive<usize>>(
     plane: &[T],
     x: usize,
     y: usize,
     width: usize,
     _height: usize,
     stride: usize,
-) -> (isize, isize, isize, isize, isize, isize) {
+) -> (usize, usize, usize, usize, usize, usize) {
     let pos = y * stride + x;
 
     // This is really slow and stupid but matches the spec exactly.
@@ -116,6 +116,6 @@ pub fn get_context(
 /// Calculate the median value of 3 numbers
 ///
 /// See: 2.2.5. Mathematical Functions
-pub fn get_median(a: isize, b: isize, c: isize) -> isize {
+pub fn get_median(a: i32, b: i32, c: i32) -> i32 {
     a + b + c - a.min(b.min(c)) - a.max(b.max(c))
 }
