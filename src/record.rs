@@ -211,7 +211,7 @@ impl ConfigRecord {
                     let pred = if j != 0 {
                         initial_states[i][j - 1][k] as i16
                     } else {
-                        128 as i16
+                        128
                     };
                     initial_states[i][j][k] =
                         ((pred + initial_state_delta[i][j][k]) & 255) as u8;
