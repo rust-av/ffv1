@@ -5,7 +5,7 @@ use crate::crc32mpeg2::crc32_mpeg2;
 use crate::error::{Error, Result};
 use crate::golomb::Coder as GolombCoder;
 use crate::golomb::State;
-use crate::jpeg2000rct::RCT;
+use crate::jpeg2000rct::Rct;
 use crate::pred::{derive_borders, get_context, get_median};
 use crate::range::RangeCoder;
 use crate::rangecoder::tables::DEFAULT_STATE_TRANSITION;
@@ -679,7 +679,7 @@ impl Decoder {
                     coder,
                     &mut frame.buf16,
                 );
-                RCT::rct(
+                Rct::rct(
                     &mut frame.buf,
                     &frame.buf16,
                     width,
@@ -699,7 +699,7 @@ impl Decoder {
                     &mut frame.buf16,
                 );
                 // See: 3.7.2. RGB
-                RCT::rct(
+                Rct::rct(
                     &mut frame.buf16,
                     &frame.buf,
                     width,
@@ -715,7 +715,7 @@ impl Decoder {
                     coder,
                     &mut frame.buf32,
                 );
-                RCT::rct(
+                Rct::rct(
                     &mut frame.buf16,
                     &frame.buf32,
                     width,

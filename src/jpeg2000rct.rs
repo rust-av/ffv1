@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-pub trait RCT<S>: Sized {
+pub trait Rct<S>: Sized {
     fn rct(
         dst: &mut [Vec<Self>],
         src: &[Vec<S>],
@@ -15,7 +15,7 @@ pub trait RCT<S>: Sized {
 /// Converts one line from 9-bit JPEG2000-RCT to planar GBR.
 ///
 /// See: 3.7.2. RGB
-impl RCT<u16> for u8 {
+impl Rct<u16> for u8 {
     fn rct(
         dst: &mut [Vec<u8>],
         src: &[Vec<u16>],
@@ -55,7 +55,7 @@ impl RCT<u16> for u8 {
 /// Converts one line from 10 to 16 bit JPEG2000-RCT to planar GBR, in place.
 ///
 /// See: 3.7.2. RGB
-impl RCT<u8> for u16 {
+impl Rct<u8> for u16 {
     fn rct(
         dst: &mut [Vec<u16>],
         _src: &[Vec<u8>],
@@ -85,7 +85,7 @@ impl RCT<u8> for u16 {
 /// Converts one line from 17-bit JPEG2000-RCT to planar GBR, in place.
 ///
 /// See: 3.7.2. RGB
-impl RCT<u32> for u16 {
+impl Rct<u32> for u16 {
     fn rct(
         dst: &mut [Vec<u16>],
         src: &[Vec<u32>],

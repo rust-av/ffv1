@@ -60,7 +60,7 @@ fn decode_single_frame(
     }
 }
 
-fn main() -> std::io::Result<()> {
+fn main() {
     // Open the matroska file
     let f = std::env::args().nth(1).expect("File path expected");
     let reader = File::open(f).unwrap();
@@ -107,5 +107,4 @@ fn main() -> std::io::Result<()> {
 
     // Iterate over the decoded frames
     while decode_single_frame(&mut demuxer, &mut ffv1_decoder).is_ok() {}
-    Ok(())
 }
