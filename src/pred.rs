@@ -106,11 +106,11 @@ pub fn get_context(
     tr: usize,
     tl: usize,
 ) -> i32 {
-    quant_tables[0][(l - tl) & 255] as i32
-        + quant_tables[1][(tl - t) & 255] as i32
-        + quant_tables[2][(t - tr) & 255] as i32
-        + quant_tables[3][(L - l) & 255] as i32
-        + quant_tables[4][(T - t) & 255] as i32
+    quant_tables[0][l.wrapping_sub(tl) & 255] as i32
+        + quant_tables[1][tl.wrapping_sub(t) & 255] as i32
+        + quant_tables[2][t.wrapping_sub(tr) & 255] as i32
+        + quant_tables[3][L.wrapping_sub(l) & 255] as i32
+        + quant_tables[4][T.wrapping_sub(t) & 255] as i32
 }
 
 /// Calculate the median value of 3 numbers
