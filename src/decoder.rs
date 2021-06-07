@@ -546,7 +546,11 @@ impl Decoder {
                     (left16s + top16s - diag16s) as i32,
                 );
             } else {
-                val += get_median(l as i32, t as i32, (l + t - tl) as i32);
+                val += get_median(
+                    l as i32,
+                    t as i32,
+                    (l + t).wrapping_sub(tl) as i32,
+                );
             }
 
             val &= (1 << shift) - 1;
