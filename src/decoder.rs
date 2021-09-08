@@ -126,6 +126,14 @@ impl Decoder {
         Ok(decoder)
     }
 
+    /// Returns the configuration for the decoder
+    ///
+    /// The config record is parsed during decoder initialisation, and can be
+    /// accessed using this method.
+    pub fn config_record(&self) -> &ConfigRecord {
+        &self.record
+    }
+
     /// DecodeFrame takes a packet and decodes it to a ffv1.Frame.
     ///
     /// Slice threading is used by default, with one goroutine per
