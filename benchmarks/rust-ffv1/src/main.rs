@@ -88,7 +88,7 @@ fn main() {
                     eprintln!("No extradata detected. Aborting");
                     std::process::exit(1);
                 });
-            if String::from_utf8_lossy(&extradata).contains("FFV1") {
+            if String::from_utf8_lossy(extradata).contains("FFV1") {
                 decoder_params.width = info.width as u32;
                 decoder_params.height = info.height as u32;
                 // As per Matroska spec for VFW CodecPrivate

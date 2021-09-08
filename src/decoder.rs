@@ -101,7 +101,7 @@ impl Decoder {
         }
 
         let record =
-            match ConfigRecord::parse_config_record(&record, width, height) {
+            match ConfigRecord::parse_config_record(record, width, height) {
                 Ok(record) => record,
                 Err(err) => {
                     return Err(Error::InvalidInputData(format!(
@@ -774,7 +774,7 @@ impl Decoder {
 
             let slice_buf_first = &buf[slice_info.pos..];
             let slice_buf_end = &slice_buf_first[..slice_info.size + 8]; // 8 bytes for footer size
-            if crc32_mpeg2(&slice_buf_end) != 0 {
+            if crc32_mpeg2(slice_buf_end) != 0 {
                 return Err(Error::InvalidInputData(
                     "CRC mismatch".to_owned(),
                 ));
