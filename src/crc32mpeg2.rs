@@ -1,5 +1,3 @@
-use crc::crc32::update;
-
 // Table for ISO/IEC 13818-1 CRC-32/MPEG-2
 const CRC32_TABLE: [u32; 256] = [
     0x00000000, 0xB71DC104, 0x6E3B8209, 0xD926430D, 0xDC760413, 0x6B6BC517,
@@ -46,6 +44,14 @@ const CRC32_TABLE: [u32; 256] = [
     0xBBB03E93, 0x0CADFF97, 0xB110B0AF, 0x060D71AB, 0xDF2B32A6, 0x6836F3A2,
     0x6D66B4BC, 0xDA7B75B8, 0x035D36B5, 0xB440F7B1,
 ];
+
+fn update(mut value: u32, table: &[u32; 256], bytes: &[u8]) -> u32 {
+    value = !value;
+    for &i in bytes.iter() {
+        value = table[((value as u8) ^ i) as usize] ^ (value >> 8)
+    }
+    !value
+}
 
 /// See: 4.8.3. slice_crc_parity
 pub fn crc32_mpeg2(buf: &[u8]) -> u32 {
