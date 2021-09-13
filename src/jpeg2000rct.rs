@@ -30,11 +30,12 @@ impl Rct<u16> for u8 {
         let Cr = &src[2][offset..];
         for y in 0..height {
             for x in 0..width {
-                let Cbtmp = Cb[(y * stride) + x] - (1 << 8); // Missing from spec
-                let Crtmp = Cr[(y * stride) + x] - (1 << 8); // Missing from spec
-                let green = Y[(y * stride) + x] - ((Cbtmp + Crtmp) >> 2);
-                let red = Crtmp + green;
-                let blue = Cbtmp + green;
+                let Cbtmp = Cb[(y * stride) + x].wrapping_sub(1 << 8); // See: 3.7.2.1. RGB
+                let Crtmp = Cr[(y * stride) + x].wrapping_sub(1 << 8); // See: 3.7.2.1. RGB
+                let green = Y[(y * stride) + x]
+                    .wrapping_sub((Cbtmp.wrapping_add(Crtmp)) >> 2); // See: 3.7.2.1. RGB
+                let red = Crtmp.wrapping_add(green); // See: 3.7.2.1 RGB
+                let blue = Cbtmp.wrapping_add(green); // See: 3.7.2.1 RGB
                 dst[0][offset + (y * stride) + x] = green as u8;
                 dst[1][offset + (y * stride) + x] = blue as u8;
                 dst[2][offset + (y * stride) + x] = red as u8;
@@ -68,12 +69,16 @@ impl Rct<u8> for u16 {
         let src = dst;
         for y in 0..height {
             for x in 0..width {
-                let Cbtmp = (src[1][offset + (y * stride) + x] - 1) << bits; // Missing from spec
-                let Crtmp = (src[2][offset + (y * stride) + x] - 1) << bits; // Missing from spec
-                let blue =
-                    src[0][offset + (y * stride) + x] - ((Cbtmp + Crtmp) >> 2);
-                let red = Crtmp + blue;
-                let green = Cbtmp + blue;
+                let Cbtmp = (src[1][offset + (y * stride) + x]
+                    .wrapping_sub(1))
+                    << bits; // See: 3.7.2.1. RGB
+                let Crtmp = (src[2][offset + (y * stride) + x]
+                    .wrapping_sub(1))
+                    << bits; // See: 3.7.2.1. RGB
+                let blue = src[0][offset + (y * stride) + x]
+                    .wrapping_sub((Cbtmp + Crtmp) >> 2); // See: 3.7.2.1. RGB
+                let red = Crtmp.wrapping_add(blue);
+                let green = Cbtmp.wrapping_add(blue);
                 src[0][offset + (y * stride) + x] = green as u16;
                 src[1][offset + (y * stride) + x] = blue as u16;
                 src[2][offset + (y * stride) + x] = red as u16;
@@ -100,11 +105,12 @@ impl Rct<u32> for u16 {
         let Cr = &src[2][offset..];
         for y in 0..height {
             for x in 0..width {
-                let Cbtmp = Cb[(y * stride) + x] - (1 << 16); // Missing from spec
-                let Crtmp = Cr[(y * stride) + x] - (1 << 16); // Missing from spec
-                let green = Y[(y * stride) + x] - ((Cbtmp + Crtmp) >> 2);
-                let red = Crtmp + green;
-                let blue = Cbtmp + green;
+                let Cbtmp = Cb[(y * stride) + x].wrapping_sub(1 << 16); // See: 3.7.2.1. RGB
+                let Crtmp = Cr[(y * stride) + x].wrapping_sub(1 << 16); // See: 3.7.2.1. RGB
+                let green = Y[(y * stride) + x]
+                    .wrapping_sub((Cbtmp.wrapping_add(Crtmp)) >> 2); // See: 3.7.2.1. RGB
+                let red = Crtmp.wrapping_add(green); // See: 3.7.2.1. RGB
+                let blue = Cbtmp.wrapping_add(green); // See: 3.7.2.1. RGB
                 dst[0][offset + (y * stride) + x] = green as u16;
                 dst[1][offset + (y * stride) + x] = blue as u16;
                 dst[2][offset + (y * stride) + x] = red as u16;
