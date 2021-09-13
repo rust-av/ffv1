@@ -125,7 +125,7 @@ jobs:
       run: |
         cmp -l ffv1-rust.raw ffv1-ffmpeg.raw
 
-  build:
+  test:
 
     strategy:
       matrix:
@@ -145,4 +145,4 @@ jobs:
 
     - name: Build
       run: |
-        cargo build --workspace
+        cargo test --workspace
