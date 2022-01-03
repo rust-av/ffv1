@@ -13,6 +13,6 @@ av-codec = "^0.2"
 av-data = "^0.3"
 av-format = "^0.3"
 byteorder = "1.3.4"
-clap = "2.33.1"
+clap = "3.0.0"
 ffv1 = { path = "..", version = "0.0.0"}
 matroska = { version = "0.1.0", git = "https://github.com/rust-av/matroska" }
