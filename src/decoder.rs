@@ -37,6 +37,7 @@ enum Coder<'a> {
 ///    - Plane 1 is Blue
 ///    - Plane 2 is Red
 ///    - If HasAlpha is true, plane 4 is alpha.
+#[derive(Debug)]
 pub struct Frame {
     /// Image data. Valid only when BitDepth is 8.
     pub buf: Vec<Vec<u8>>,
@@ -71,6 +72,7 @@ pub struct Frame {
 }
 
 /// Decoder is a FFV1 decoder instance.
+#[derive(Debug)]
 pub struct Decoder {
     record: ConfigRecord,
     state_transition: [u8; 256],

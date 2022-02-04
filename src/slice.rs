@@ -3,21 +3,21 @@ use crate::error::Result;
 use crate::golomb::State;
 use crate::range::RangeCoder;
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct InternalFrame {
     pub keyframe: bool,
     pub slice_info: Vec<SliceInfo>,
     pub slices: Vec<Slice>,
 }
 
-#[derive(Clone, Default, Copy)]
+#[derive(Debug, Clone, Default, Copy)]
 pub struct SliceInfo {
     pub(crate) pos: usize,
     pub(crate) size: usize,
     pub(crate) error_status: u8,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Slice {
     pub(crate) header: SliceHeader,
     pub(crate) state: Vec<Vec<Vec<u8>>>,
@@ -25,7 +25,7 @@ pub struct Slice {
     pub(crate) planes: Vec<SlicePlane>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct SliceHeader {
     pub(crate) slice_width_minus1: u32,
     pub(crate) slice_height_minus1: u32,
@@ -37,7 +37,7 @@ pub struct SliceHeader {
     pub(crate) sar_den: u32,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct SlicePlane {
     #[allow(dead_code)]
     pub(crate) start_x: u32,

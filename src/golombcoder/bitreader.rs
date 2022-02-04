@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct BitReader<'a> {
     buf: &'a [u8],
     pos: usize,

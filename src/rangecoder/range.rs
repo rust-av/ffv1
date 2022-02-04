@@ -9,6 +9,7 @@ use crate::rangecoder::tables::DEFAULT_STATE_TRANSITION;
 /// RangeCoder is an instance of a range coder, as defined in:
 ///     Martin, G. Nigel N., "Range encoding: an algorithm for
 ///     removing redundancy from a digitised message.", July 1979.
+#[derive(Debug)]
 pub struct RangeCoder<'a> {
     buf: &'a [u8],
     pos: usize,

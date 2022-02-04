@@ -3,6 +3,7 @@ use crate::crc32mpeg2::crc32_mpeg2;
 use crate::error::{Error, Result};
 use crate::range::RangeCoder;
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct ConfigRecord {
     pub version: u8,
     pub micro_version: u8,

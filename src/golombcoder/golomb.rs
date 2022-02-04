@@ -6,6 +6,7 @@ use crate::golombcoder::tables::LOG2_RUN;
 
 /// Coder is an instance of a Golomb-Rice coder
 /// as described in 3.8.2. Golomb Rice Mode.
+#[derive(Debug)]
 pub struct Coder<'a> {
     r: BitReader<'a>,
     run_mode: usize,
