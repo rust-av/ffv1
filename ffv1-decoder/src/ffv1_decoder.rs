@@ -101,17 +101,17 @@ fn main() -> std::io::Result<()> {
     let matches = App::new("ffv1-decode")
         .about("Decodes a ffv1 codec contained in a matroska file")
         .arg(
-            Arg::with_name("input-path")
+            Arg::new("input-path")
                 .help("Matroska file to analyze")
-                .short("i")
+                .short('i')
                 .long("input")
                 .takes_value(true)
                 .required(true),
         )
         .arg(
-            Arg::with_name("output-path")
+            Arg::new("output-path")
                 .help("Output file")
-                .short("o")
+                .short('o')
                 .long("output")
                 .takes_value(true)
                 .required(true),
