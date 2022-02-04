@@ -39,7 +39,9 @@ pub struct SliceHeader {
 
 #[derive(Clone)]
 pub struct SlicePlane {
+    #[allow(dead_code)]
     pub(crate) start_x: u32,
+    #[allow(dead_code)]
     pub(crate) start_y: u32,
     pub(crate) width: u32,
     pub(crate) height: u32,

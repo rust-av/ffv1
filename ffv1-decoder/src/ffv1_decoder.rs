@@ -119,16 +119,10 @@ fn main() -> std::io::Result<()> {
         .get_matches();
 
     // Get the path to the matroska file
-    let input_path = matches
-        .value_of("input-path")
-        .map(|s| Path::new(s))
-        .unwrap();
+    let input_path = matches.value_of("input-path").map(Path::new).unwrap();
 
     // Get the path to the output file
-    let output_path = matches
-        .value_of("output-path")
-        .map(|s| Path::new(s))
-        .unwrap();
+    let output_path = matches.value_of("output-path").map(Path::new).unwrap();
 
     // Open the matroska file
     let reader = File::open(input_path).unwrap();
