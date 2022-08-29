@@ -11,7 +11,7 @@ path = "src/ffv1_decoder.rs"
 [dependencies]
 av-codec = "^0.2"
 av-data = "^0.3"
-av-format = "^0.3"
+av-format = "^0.7"
 byteorder = "1.3.4"
 clap = "^3"
 ffv1 = { path = "..", version = "0.0.0"}
