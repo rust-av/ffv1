@@ -12,7 +12,7 @@ thiserror = "1.0"
 members = ["ffv1-decoder", "benchmarks/rust-ffv1"]
 
 [dev-dependencies]
-av-data = "^0.3"
+av-data = "^0.4"
 av-format = "^0.3"
 byteorder = "1.3.4"
 matroska = { version = "0.1.0", git = "https://github.com/rust-av/matroska" }
