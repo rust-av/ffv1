@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::Read;
 
 use av_data::params::MediaKind;
-use av_format::buffer::AccReader;
-use av_format::demuxer::{Context, Event};
+use av_format::buffer::{AccReader, Buffered};
+use av_format::demuxer::{Context, Event, Demuxer};
 
 use matroska::demuxer::MkvDemuxer;
 
@@ -19,7 +19,7 @@ struct DecParams {
 
 // Decodes a single ffv1 frame
 fn decode_single_frame(
-    demuxer: &mut Context,
+    demuxer: &mut Context<impl Demuxer, impl Buffered>,
     decoder: &mut Decoder,
 ) -> Result<ffv1::decoder::Frame, String> {
     // The demuxer reads which event has occurred
@@ -59,7 +59,7 @@ fn decode(input: &str) -> ffv1::decoder::Frame {
     let ar = AccReader::with_capacity(4 * 1024, reader);
 
     // Set the type of demuxer, in this case, a matroska demuxer
-    let mut demuxer = Context::new(Box::new(MkvDemuxer::new()), Box::new(ar));
+    let mut demuxer = Context::new(MkvDemuxer::new(), ar);
 
     // Read matroska headers
     demuxer
@@ -78,7 +78,7 @@ fn decode(input: &str) -> ffv1::decoder::Frame {
                     eprintln!("No extradata detected. Aborting");
                     std::process::exit(1);
                 });
-            if String::from_utf8_lossy(&extradata).contains("FFV1") {
+            if String::from_utf8_lossy(extradata).contains("FFV1") {
                 decoder_params.width = info.width as u32;
                 decoder_params.height = info.height as u32;
                 // As per Matroska spec for VFW CodecPrivate

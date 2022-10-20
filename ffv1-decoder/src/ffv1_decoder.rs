@@ -21,8 +21,8 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use data::params::MediaKind;
-use format::buffer::AccReader;
-use format::demuxer::{Context, Event};
+use format::buffer::{AccReader, Buffered};
+use format::demuxer::{Context, Event, Demuxer};
 
 use matroska::demuxer::MkvDemuxer;
 
@@ -53,7 +53,7 @@ fn write_u16_le<W: Write>(
 
 // Decodes a single ffv1 frame
 fn decode_single_frame(
-    demuxer: &mut Context,
+    demuxer: &mut Context<impl Demuxer, impl Buffered>,
     decoder: &mut Decoder,
     extradata: &[u8],
 ) -> Result<Frame, String> {
@@ -131,7 +131,7 @@ fn main() -> std::io::Result<()> {
     let ar = AccReader::with_capacity(4 * 1024, reader);
 
     // Set the type of demuxer, in this case, a matroska demuxer
-    let mut demuxer = Context::new(Box::new(MkvDemuxer::new()), Box::new(ar));
+    let mut demuxer = Context::new(MkvDemuxer::new(), ar);
 
     // Read matroska headers
     demuxer

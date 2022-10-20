@@ -14,9 +14,8 @@ use data::params::MediaKind;
 use format::buffer::AccReader;
 use format::demuxer::{Context, Event};
 
-use matroska::demuxer::MkvDemuxer;
-
 use ffv1::decoder::Decoder;
+use matroska::demuxer::MkvDemuxer;
 
 // ffv1 decoder parameters
 #[derive(Default)]
@@ -28,7 +27,7 @@ struct DecParams {
 
 // Decodes a single ffv1 frame
 fn decode_single_frame(
-    demuxer: &mut Context,
+    demuxer: &mut Context<MkvDemuxer, AccReader<File>>,
     decoder: &mut Decoder,
 ) -> Result<(), String> {
     // The demuxer reads which event has occurred
@@ -69,7 +68,7 @@ fn main() {
     let ar = AccReader::with_capacity(4 * 1024, reader);
 
     // Set the type of demuxer, in this case, a matroska demuxer
-    let mut demuxer = Context::new(Box::new(MkvDemuxer::new()), Box::new(ar));
+    let mut demuxer = Context::new(MkvDemuxer::new(), ar);
 
     // Read matroska headers
     demuxer
