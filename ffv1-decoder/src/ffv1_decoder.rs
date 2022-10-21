@@ -22,7 +22,7 @@ use std::path::Path;
 
 use data::params::MediaKind;
 use format::buffer::{AccReader, Buffered};
-use format::demuxer::{Context, Event, Demuxer};
+use format::demuxer::{Context, Demuxer, Event};
 
 use matroska::demuxer::MkvDemuxer;
 

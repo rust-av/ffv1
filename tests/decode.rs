@@ -3,7 +3,7 @@ use std::io::Read;
 
 use av_data::params::MediaKind;
 use av_format::buffer::{AccReader, Buffered};
-use av_format::demuxer::{Context, Event, Demuxer};
+use av_format::demuxer::{Context, Demuxer, Event};
 
 use matroska::demuxer::MkvDemuxer;
 
