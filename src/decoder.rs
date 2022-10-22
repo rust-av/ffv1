@@ -464,8 +464,8 @@ impl Decoder {
         header: &SliceHeader,
         record: &ConfigRecord,
         coder: &mut Coder,
-        state: &mut Vec<Vec<Vec<u8>>>,
-        golomb_state: &mut Vec<Vec<State>>,
+        state: &mut [Vec<Vec<u8>>],
+        golomb_state: &mut [Vec<State>],
         buf: &mut [T],
         width: usize,
         height: usize,
@@ -573,7 +573,7 @@ impl Decoder {
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut Coder,
-        buf: &mut Vec<Vec<T>>,
+        buf: &mut [Vec<T>],
     ) where
         T: AsPrimitive<usize>,
         u32: AsPrimitive<T>,
@@ -616,7 +616,7 @@ impl Decoder {
         current_slice: &mut Slice,
         record: &ConfigRecord,
         coder: &mut Coder,
-        buf: &mut Vec<Vec<T>>,
+        buf: &mut [Vec<T>],
     ) where
         T: AsPrimitive<usize>,
         u32: AsPrimitive<T>,
