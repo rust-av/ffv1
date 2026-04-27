@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 num-traits = "0.2"
-thiserror = "1.0"
+thiserror = "2.0"
 
 [workspace]
 members = ["ffv1-decoder", "benchmarks/rust-ffv1"]
